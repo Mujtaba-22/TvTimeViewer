@@ -1,0 +1,28 @@
+@model TvTimeViewer.Models.Movie
+@{ ViewData["Title"] = Model.Title; }
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <img src="@(Model.PosterImage != null ? Url.Action("Movie", "Poster", new { id = Model.Id }) : "/images/placeholder.png")"
+             class="img-fluid rounded shadow-sm" alt="@Model.Title" />
+    </div>
+    <div class="col-md-9">
+        <h2>@Model.Title</h2>
+        <div class="mb-3">
+            @if (Model.Watched)
+            {
+                <span class="badge bg-success fs-6">✓ Watched</span>
+                @if (Model.WatchedAt != null) { <span class="text-muted ms-2">on @Model.WatchedAt.Value.ToShortDateString()</span> }
+            }
+            else { <span class="badge bg-secondary fs-6">Not Watched</span> }
+        </div>
+        <form asp-controller="Movie" asp-action="ToggleWatched" method="post">
+            <input type="hidden" name="movieId" value="@Model.Id" />
+            <button type="submit" class="btn @(Model.Watched ? "btn-outline-secondary" : "btn-success")">
+                @(Model.Watched ? "Mark as Unwatched" : "Mark as Watched")
+            </button>
+        </form>
+    </div>
+</div>
+
+<a asp-controller="Library" asp-action="Index" class="btn btn-outline-secondary mt-3">← Back to Library</a>

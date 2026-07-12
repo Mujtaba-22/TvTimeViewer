@@ -1,0 +1,228 @@
+@model TvTimeViewer.Models.Show
+@{
+    ViewData["Title"] = Model.Title;
+    var seasons = Model.Episodes
+        .GroupBy(e => e.SeasonNumber)
+        .OrderBy(g => g.Key)
+        .ToList();
+}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <img src="@(Model.PosterImage != null ? Url.Action("Show", "Poster", new { id = Model.Id }) : "/images/placeholder.png")"
+             class="img-fluid rounded shadow-sm" alt="@Model.Title" />
+    </div>
+    <div class="col-md-9">
+        <h2>@Model.Title</h2>
+        <div class="mb-2">
+            @if (Model.Followed)
+            {
+                <span class="badge bg-success">Following</span>
+            }
+            @if (Model.Archived)
+            {
+                <span class="badge bg-secondary">Archived</span>
+            }
+            @if (!string.IsNullOrEmpty(Model.Genre))
+            {
+                <span class="badge bg-light text-dark border">@Model.Genre</span>
+            }
+        </div>
+        <p class="text-muted">
+            @Model.Episodes.Count(e => e.Watched) of @Model.Episodes.Count episodes watched
+        </p>
+        <div class="progress mb-3" style="height:8px;">
+            <div class="progress-bar bg-success" style="width:@(Model.Episodes.Count > 0 ? Model.Episodes.Count(e => e.Watched) * 100 / Model.Episodes.Count : 0)%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="episodes-panel">
+    <div class="episodes-panel-header">
+        <span>All episodes</span>
+        <form asp-controller="Show" asp-action="MarkAllWatched" method="post"
+              onsubmit="return confirm('Mark ALL episodes in this show as watched?');" class="d-inline">
+            <input type="hidden" name="showId" value="@Model.Id" />
+            <button type="submit"
+                    class="check-btn @(Model.Episodes.Any() && Model.Episodes.All(e => e.Watched) ? "check-btn-active" : "")"
+                    title="Mark entire show watched">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 13l4 4L19 7" />
+                </svg>
+            </button>
+        </form>
+    </div>
+
+    @foreach (var season in seasons)
+    {
+        var episodes = season.OrderBy(e => e.EpisodeNumber).ToList();
+        var watchedCount = episodes.Count(e => e.Watched);
+        var totalCount = episodes.Count;
+        var allWatched = watchedCount == totalCount;
+        var label = season.Key == 0 ? "Specials" : $"Season {season.Key}";
+
+        <div class="season-row">
+            <div class="season-row-main" data-bs-toggle="collapse" data-bs-target="#season@(season.Key)Body">
+                <span class="season-title">
+                    @label
+                    <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6" />
+                    </svg>
+                </span>
+                <div class="season-right">
+                    <span class="season-count">@watchedCount/@totalCount</span>
+                    <form asp-controller="Show" asp-action="MarkSeasonWatched" method="post"
+                          onsubmit="event.stopPropagation(); return confirm('Mark all of @label as watched?');"
+                          class="d-inline" onclick="event.stopPropagation()">
+                        <input type="hidden" name="showId" value="@Model.Id" />
+                        <input type="hidden" name="seasonNumber" value="@season.Key" />
+                        <button type="submit"
+                                class="check-btn @(allWatched ? "check-btn-active" : "")"
+                                title="Mark season watched">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <path d="M5 13l4 4L19 7" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="collapse" id="season@(season.Key)Body">
+                <ul class="episode-list">
+                    @foreach (var ep in episodes)
+                    {
+                        <li class="episode-row">
+                            <span class="episode-name">E@(ep.EpisodeNumber.ToString("00")) — @ep.Name</span>
+                            <form asp-controller="Show" asp-action="ToggleWatched" method="post" class="d-inline">
+                                <input type="hidden" name="episodeId" value="@ep.Id" />
+                                <button type="submit" class="check-btn check-btn-sm @(ep.Watched ? "check-btn-active" : "")">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <path d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+</div>
+
+<a asp-controller="Library" asp-action="Index" class="btn btn-outline-secondary mt-4">← Back to Library</a>
+
+<style>
+    .episodes-panel {
+        background: #0d0d0d;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .episodes-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .season-row {
+        border-top: 3px solid #d4af37;
+    }
+
+    .season-row-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 20px;
+        background: #111;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .season-row-main:hover {
+        background: #1a1a1a;
+    }
+
+    .season-title {
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chevron {
+        color: #888;
+        transition: transform 0.2s;
+    }
+
+    .season-row-main[aria-expanded="true"] .chevron {
+        transform: rotate(180deg);
+    }
+
+    .season-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .season-count {
+        color: #aaa;
+        font-size: 0.95rem;
+        min-width: 45px;
+        text-align: right;
+    }
+
+    .check-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: none;
+        background: #e8e8e8;
+        color: #999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .check-btn:hover {
+        background: #d4d4d4;
+    }
+
+    .check-btn-active {
+        background: #2ecc71;
+        color: #fff;
+    }
+
+    .check-btn-sm {
+        width: 28px;
+        height: 28px;
+    }
+
+    .episode-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        background: #0a0a0a;
+    }
+
+    .episode-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 20px 12px 40px;
+        border-bottom: 1px solid #1c1c1c;
+    }
+
+    .episode-name {
+        color: #ccc;
+        font-size: 0.9rem;
+    }
+</style>

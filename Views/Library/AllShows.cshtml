@@ -1,0 +1,83 @@
+@model List<TvTimeViewer.Models.Show>
+@{ ViewData["Title"] = "All Shows"; }
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>All Shows</h2>
+    <a asp-controller="Library" asp-action="Index" class="btn btn-outline-secondary btn-sm">← Back to Dashboard</a>
+</div>
+
+<form asp-controller="Library" asp-action="AllShows" method="get" class="row g-2 mb-4">
+    <div class="col-md-4">
+        <input type="text" name="q" value="@ViewBag.Query" class="form-control" placeholder="Search shows by title..." />
+    </div>
+    <div class="col-md-3">
+        <select name="filter" class="form-select" onchange="this.form.submit()">
+            <option value="" selected="@(ViewBag.Filter == null)">All Shows</option>
+            <option value="following" selected="@(ViewBag.Filter == "following")">Following</option>
+            <option value="archived" selected="@(ViewBag.Filter == "archived")">Archived</option>
+            <option value="no-poster" selected="@(ViewBag.Filter == "no-poster")">Missing Poster</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="genre" class="form-select" onchange="this.form.submit()">
+            <option value="">All Genres</option>
+            @foreach (var g in (List<string>)ViewBag.AllGenres)
+            {
+                <option value="@g" selected="@(ViewBag.Genre == g)">@g</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+    </div>
+</form>
+
+<p class="text-muted small mb-3">@ViewBag.TotalResults result(s) found</p>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">No shows match your search or filter.</div>
+}
+
+<div class="row g-3 mb-4">
+    @foreach (var show in Model)
+    {
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id">
+                    <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@show.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@show.Title</p>
+                    @if (!string.IsNullOrEmpty(show.Genre))
+                    {
+                        <span class="badge bg-light text-dark border">@show.Genre.Split(',')[0]</span>
+                    }
+                    @if (show.Followed)
+                    {
+                        <span class="badge bg-success">Following</span>
+                    }
+                    @if (show.Archived)
+                    {
+                        <span class="badge bg-secondary">Archived</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if ((int)ViewBag.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination justify-content-center">
+            @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link" asp-action="AllShows" asp-route-page="@i" asp-route-q="@ViewBag.Query" asp-route-filter="@ViewBag.Filter" asp-route-genre="@ViewBag.Genre">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

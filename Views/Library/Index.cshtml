@@ -1,0 +1,479 @@
+@model TvTimeViewer.Controllers.LibraryViewModel
+@{
+    ViewData["Title"] = "My Library";
+    int initialCount = 12;
+}
+
+<h2 class="mb-4">My TV Library</h2>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Import GDPR ZIP</h5>
+        <form id="importForm" class="row g-2 align-items-center mb-3">
+            <div class="col-auto">
+                <input type="file" id="zipFile" name="zipFile" accept=".zip" class="form-control" required />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Import</button>
+            </div>
+        </form>
+
+        <div class="d-flex gap-2">
+            <button type="button" id="btnCleanDuplicates" class="btn btn-outline-warning btn-sm">Remove Duplicate Titles</button>
+            <button type="button" id="btnRefreshPosters" class="btn btn-outline-info btn-sm">Fetch All Posters</button>
+            <button type="button" id="btnRefreshGenres" class="btn btn-outline-primary btn-sm">Fetch All Genres</button>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Top 10 Shows This Week <span class="badge bg-secondary">Live from TMDb</span></h4>
+</div>
+
+<div class="trending-scroll mb-5" id="trendingShowsRow">
+    <div class="trending-placeholder">Loading top shows...</div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Top 10 Movies This Week <span class="badge bg-secondary">Live from TMDb</span></h4>
+</div>
+
+<div class="trending-scroll mb-5" id="trendingMoviesRow">
+    <div class="trending-placeholder">Loading top movies...</div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Show Updates <span class="badge bg-secondary">New Episodes & Seasons</span></h4>
+    <button type="button" id="btnCheckUpdates" class="btn btn-outline-info btn-sm">Check for Updates</button>
+</div>
+
+<div class="row g-3 mb-5" id="showUpdatesRow">
+    <div class="col-12">
+        <p class="text-muted">Click "Check for Updates" to scan your followed shows for new episodes and seasons via TVmaze.</p>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Shows <span class="badge bg-secondary">@Model.Shows.Count</span></h4>
+    <div>
+        <a asp-controller="Library" asp-action="AllShows" class="btn btn-outline-dark btn-sm">View All Shows</a>
+        <a asp-controller="Search" asp-action="Index" class="btn btn-outline-primary btn-sm">+ Search & Add Titles</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3" id="showsGrid">
+    @for (int i = 0; i < Model.Shows.Count; i++)
+    {
+        var show = Model.Shows[i];
+        <div class="col-6 col-md-3 col-lg-2 show-card @(i >= initialCount ? "d-none" : "")">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id">
+                    <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@show.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@show.Title</p>
+                    @if (!string.IsNullOrEmpty(show.Genre))
+                    {
+                        <span class="badge bg-light text-dark border">@show.Genre.Split(',')[0]</span>
+                    }
+                    @if (show.Followed)
+                    {
+                        <span class="badge bg-success">Following</span>
+                    }
+                    @if (show.Archived)
+                    {
+                        <span class="badge bg-secondary">Archived</span>
+                    }
+                </div>
+                <div class="card-footer p-2 bg-white border-0 d-flex gap-1">
+                    <form asp-controller="Library" asp-action="ToggleFollowed" asp-route-id="@show.Id" method="post" class="flex-grow-1">
+                        <button type="submit" class="btn btn-sm w-100 @(show.Followed ? "btn-success" : "btn-outline-secondary")">
+                            @(show.Followed ? "✓ Following" : "Mark Followed")
+                        </button>
+                    </form>
+                    <form asp-controller="Library" asp-action="DeleteShow" asp-route-id="@show.Id" method="post" onsubmit="return confirm('Remove this show?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.Shows.Count > initialCount)
+{
+    <div class="text-center mb-5">
+        <button type="button" class="btn btn-outline-secondary" id="showMoreShows">Show More Shows (@(Model.Shows.Count - initialCount) remaining)</button>
+    </div>
+}
+else { <div class="mb-5"></div> }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Watched Series <span class="badge bg-secondary">@Model.WatchedShows.Count</span></h4>
+    <a asp-controller="Library" asp-action="AllWatchedShows" class="btn btn-outline-dark btn-sm">View All Watched Series</a>
+</div>
+
+<div class="row g-3 mb-3" id="watchedShowsGrid">
+    @for (int i = 0; i < Model.WatchedShows.Count; i++)
+    {
+        var show = Model.WatchedShows[i];
+        <div class="col-6 col-md-3 col-lg-2 watched-show-card @(i >= initialCount ? "d-none" : "")">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id">
+                    <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@show.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@show.Title</p>
+                    @if (!string.IsNullOrEmpty(show.Genre))
+                    {
+                        <span class="badge bg-light text-dark border">@show.Genre.Split(',')[0]</span>
+                    }
+                    <span class="badge bg-success">✓ Fully Watched</span>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.WatchedShows.Count > initialCount)
+{
+    <div class="text-center mb-5">
+        <button type="button" class="btn btn-outline-secondary" id="showMoreWatchedShows">Show More (@(Model.WatchedShows.Count - initialCount) remaining)</button>
+    </div>
+}
+else if (!Model.WatchedShows.Any())
+{
+    <p class="text-muted mb-5">No fully watched series yet — mark all episodes of a show as watched to see it here.</p>
+}
+else { <div class="mb-5"></div> }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Watched Movies <span class="badge bg-secondary">@Model.WatchedMovies.Count</span></h4>
+    <a asp-controller="Library" asp-action="AllWatchedMovies" class="btn btn-outline-dark btn-sm">View All Watched Movies</a>
+</div>
+
+<div class="row g-3 mb-3" id="watchedMoviesGrid">
+    @for (int i = 0; i < Model.WatchedMovies.Count; i++)
+    {
+        var movie = Model.WatchedMovies[i];
+        <div class="col-6 col-md-3 col-lg-2 watched-movie-card @(i >= initialCount ? "d-none" : "")">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Movie" asp-action="Details" asp-route-id="@movie.Id">
+                    <img src="@(movie.PosterImage != null ? Url.Action("Movie", "Poster", new { id = movie.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@movie.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@movie.Title</p>
+                    @if (!string.IsNullOrEmpty(movie.Genre))
+                    {
+                        <span class="badge bg-light text-dark border">@movie.Genre.Split(',')[0]</span>
+                    }
+                    @if (movie.WatchedAt != null)
+                    {
+                        <span class="text-muted small">Watched @movie.WatchedAt.Value.ToShortDateString()</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.WatchedMovies.Count > initialCount)
+{
+    <div class="text-center mb-5">
+        <button type="button" class="btn btn-outline-secondary" id="showMoreWatchedMovies">Show More (@(Model.WatchedMovies.Count - initialCount) remaining)</button>
+    </div>
+}
+else if (!Model.WatchedMovies.Any())
+{
+    <p class="text-muted mb-5">No watched movies yet — mark a movie as watched to see it here.</p>
+}
+else { <div class="mb-5"></div> }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Movies <span class="badge bg-secondary">@Model.Movies.Count</span></h4>
+    <a asp-controller="Library" asp-action="AllMovies" class="btn btn-outline-dark btn-sm">View All Movies</a>
+</div>
+
+<div class="row g-3 mb-3" id="moviesGrid">
+    @for (int i = 0; i < Model.Movies.Count; i++)
+    {
+        var movie = Model.Movies[i];
+        <div class="col-6 col-md-3 col-lg-2 movie-card @(i >= initialCount ? "d-none" : "")">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Movie" asp-action="Details" asp-route-id="@movie.Id">
+                    <img src="@(movie.PosterImage != null ? Url.Action("Movie", "Poster", new { id = movie.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@movie.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@movie.Title</p>
+                    @if (!string.IsNullOrEmpty(movie.Genre))
+                    {
+                        <span class="badge bg-light text-dark border">@movie.Genre.Split(',')[0]</span>
+                    }
+                    @if (movie.WatchedAt != null)
+                    {
+                        <span class="text-muted small">Watched @movie.WatchedAt.Value.ToShortDateString()</span>
+                    }
+                </div>
+                <div class="card-footer p-2 bg-white border-0 d-flex gap-1">
+                    <form asp-controller="Movie" asp-action="ToggleWatched" method="post" class="flex-grow-1">
+                        <input type="hidden" name="movieId" value="@movie.Id" />
+                        <button type="submit" class="btn btn-sm w-100 @(movie.Watched ? "btn-success" : "btn-outline-secondary")">
+                            @(movie.Watched ? "✓ Watched" : "Mark Watched")
+                        </button>
+                    </form>
+                    <form asp-controller="Library" asp-action="DeleteMovie" asp-route-id="@movie.Id" method="post" onsubmit="return confirm('Remove this movie?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.Movies.Count > initialCount)
+{
+    <div class="text-center mb-5">
+        <button type="button" class="btn btn-outline-secondary" id="showMoreMovies">Show More Movies (@(Model.Movies.Count - initialCount) remaining)</button>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        async function loadTrending() {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            try {
+                const res = await fetch('/Trending/Top', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                const data = await res.json();
+
+                if (data.error) {
+                    document.getElementById('trendingShowsRow').innerHTML =
+                        `<div class="alert alert-warning mb-0">Trending unavailable: ${data.error}</div>`;
+                    document.getElementById('trendingMoviesRow').innerHTML = '';
+                    return;
+                }
+
+                renderTrendingRow('trendingShowsRow', data.shows);
+                renderTrendingRow('trendingMoviesRow', data.movies);
+            } catch (err) {
+                clearTimeout(timeoutId);
+                const message = err.name === 'AbortError' ? 'Request timed out.' : 'Could not reach TMDb.';
+                document.getElementById('trendingShowsRow').innerHTML =
+                    `<div class="alert alert-warning mb-0">${message}</div>`;
+                document.getElementById('trendingMoviesRow').innerHTML = '';
+            }
+        }
+
+        function renderTrendingRow(elementId, items) {
+            const container = document.getElementById(elementId);
+            if (!items || !items.length) {
+                container.innerHTML = `<div class="alert alert-warning mb-0">No trending data returned.</div>`;
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const poster = item.poster || '/images/placeholder.png';
+                const rating = item.rating ? item.rating.toFixed(1) : 'N/A';
+                const year = item.releaseDate ? item.releaseDate.substring(0, 4) : '';
+                return `
+                    <div class="trending-card">
+                        <div class="trending-rank">#${item.rank}</div>
+                        <img src="${poster}" alt="${item.title}" loading="lazy" />
+                        <div class="trending-info">
+                            <p class="trending-title" title="${item.title}">${item.title}</p>
+                            <p class="trending-meta">★ ${rating} ${year ? '· ' + year : ''}</p>
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100 trending-add-btn"
+                                    data-tmdb-id="${item.tmdbId}" data-is-movie="${item.isMovie}">
+                                + Add to List
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        loadTrending();
+
+        document.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.trending-add-btn');
+            if (!btn) return;
+
+            const tmdbId = btn.dataset.tmdbId;
+            const isMovie = btn.dataset.isMovie === 'true';
+            const endpoint = isMovie ? '/Trending/AddMovie' : '/Trending/AddShow';
+
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+
+            try {
+                const res = await fetch(`${endpoint}?tmdbId=${tmdbId}`, { method: 'POST' });
+                const data = await res.json();
+
+                if (data.success) {
+                    btn.textContent = '✓ Added';
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-success');
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '+ Add to List';
+                    Swal.fire({ icon: 'info', title: 'Not Added', text: data.message, timer: 2500, showConfirmButton: false });
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = '+ Add to List';
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Could not add this title.', timer: 2500, showConfirmButton: false });
+            }
+        });
+
+        async function checkShowUpdates(force) {
+            const row = document.getElementById('showUpdatesRow');
+            row.innerHTML = `<div class="col-12"><p class="text-muted">Checking your followed shows for new episodes...</p></div>`;
+
+            try {
+                const res = await fetch(`/Updates/Check?force=${force}`);
+                const data = await res.json();
+
+                if (!data.updates || !data.updates.length) {
+                    row.innerHTML = `<div class="col-12"><div class="alert alert-success mb-0">You're all caught up — no new episodes or seasons found.</div></div>`;
+                    return;
+                }
+
+                row.innerHTML = data.updates.map(u => `
+                    <div class="col-md-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="d-flex">
+                                <img src="${u.poster || '/images/placeholder.png'}" style="width:90px; height:135px; object-fit:cover;" alt="${u.title}" />
+                                <div class="card-body p-3">
+                                    <h6 class="card-title mb-1">${u.title}</h6>
+                                    ${u.isNewSeason
+                                        ? `<span class="badge bg-success mb-1">New Season ${u.latestSeason}!</span>`
+                                        : `<span class="badge bg-primary mb-1">${u.newEpisodeCount} new episode${u.newEpisodeCount > 1 ? 's' : ''}</span>`}
+                                    <p class="small text-muted mb-2">Latest: ${u.latestEpisodeTitle}</p>
+                                    <a href="/Show/Details/${u.showId}" class="btn btn-sm btn-outline-dark w-100">View Show</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                row.innerHTML = `<div class="col-12"><div class="alert alert-warning mb-0">Could not check for updates right now.</div></div>`;
+            }
+        }
+
+        document.getElementById('btnCheckUpdates').addEventListener('click', function () {
+            checkShowUpdates(true);
+        });
+
+        checkShowUpdates(false);
+
+        function setupShowMore(buttonId, cardClass) {
+            const button = document.getElementById(buttonId);
+            if (!button) return;
+            button.addEventListener('click', function () {
+                const hidden = document.querySelectorAll('.' + cardClass + '.d-none');
+                let revealed = 0;
+                hidden.forEach(c => { if (revealed < 12) { c.classList.remove('d-none'); revealed++; } });
+                const stillHidden = document.querySelectorAll('.' + cardClass + '.d-none').length;
+                if (stillHidden === 0) button.remove();
+            });
+        }
+        setupShowMore('showMoreShows', 'show-card');
+        setupShowMore('showMoreWatchedShows', 'watched-show-card');
+        setupShowMore('showMoreWatchedMovies', 'watched-movie-card');
+        setupShowMore('showMoreMovies', 'movie-card');
+
+        function pollProgress(jobId, onDone) {
+            const interval = setInterval(async () => {
+                const res = await fetch('/Library/Progress?id=' + jobId);
+                if (!res.ok) { clearInterval(interval); return; }
+                const state = await res.json();
+
+                Swal.update({
+                    title: state.label,
+                    html: `<div class="progress" style="height:24px;">
+                             <div class="progress-bar bg-success" style="width:${state.percent}%">${state.percent}%</div>
+                           </div>`
+                });
+
+                if (state.completed) {
+                    clearInterval(interval);
+                    onDone(state.resultMessage);
+                }
+            }, 700);
+        }
+
+        function showProgressModal() {
+            Swal.fire({
+                title: 'Starting...',
+                html: `<div class="progress" style="height:24px;">
+                         <div class="progress-bar bg-success" style="width:0%">0%</div>
+                       </div>`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false
+            });
+        }
+
+        function finishWithSuccess(message) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Done!',
+                text: message,
+                confirmButtonText: 'OK'
+            }).then(() => location.reload());
+        }
+
+        document.getElementById('importForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('zipFile');
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData();
+            formData.append('zipFile', fileInput.files[0]);
+
+            showProgressModal();
+
+            const res = await fetch('/Library/StartImportZip', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.error });
+                return;
+            }
+
+            pollProgress(data.jobId, finishWithSuccess);
+        });
+
+        document.getElementById('btnRefreshPosters').addEventListener('click', async function () {
+            showProgressModal();
+            const res = await fetch('/Library/StartRefreshPosters', { method: 'POST' });
+            const data = await res.json();
+            pollProgress(data.jobId, finishWithSuccess);
+        });
+
+        document.getElementById('btnRefreshGenres').addEventListener('click', async function () {
+            showProgressModal();
+            const res = await fetch('/Library/StartRefreshGenres', { method: 'POST' });
+            const data = await res.json();
+            pollProgress(data.jobId, finishWithSuccess);
+        });
+
+        document.getElementById('btnCleanDuplicates').addEventListener('click', async function () {
+            showProgressModal();
+            const res = await fetch('/Library/StartCleanDuplicates', { method: 'POST' });
+            const data = await res.json();
+            pollProgress(data.jobId, finishWithSuccess);
+        });
+    </script>
+}

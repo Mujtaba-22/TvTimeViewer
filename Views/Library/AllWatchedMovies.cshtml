@@ -1,0 +1,71 @@
+@model List<TvTimeViewer.Models.Movie>
+@{ ViewData["Title"] = "All Watched Movies"; }
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>All Watched Movies</h2>
+    <a asp-controller="Library" asp-action="Index" class="btn btn-outline-secondary btn-sm">← Back to Dashboard</a>
+</div>
+
+<form asp-controller="Library" asp-action="AllWatchedMovies" method="get" class="row g-2 mb-4">
+    <div class="col-md-6">
+        <input type="text" name="q" value="@ViewBag.Query" class="form-control" placeholder="Search watched movies by title..." />
+    </div>
+    <div class="col-md-4">
+        <select name="genre" class="form-select" onchange="this.form.submit()">
+            <option value="">All Genres</option>
+            @foreach (var g in (List<string>)ViewBag.AllGenres)
+            {
+                <option value="@g" selected="@(ViewBag.Genre == g)">@g</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+    </div>
+</form>
+
+<p class="text-muted small mb-3">@ViewBag.TotalResults result(s) found</p>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">No watched movies match your search or filter.</div>
+}
+
+<div class="row g-3 mb-4">
+    @foreach (var movie in Model)
+    {
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Movie" asp-action="Details" asp-route-id="@movie.Id">
+                    <img src="@(movie.PosterImage != null ? Url.Action("Movie", "Poster", new { id = movie.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@movie.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@movie.Title</p>
+                    @if (!string.IsNullOrEmpty(movie.Genre))
+                    {
+                        <span class="badge bg-light text-dark border">@movie.Genre.Split(',')[0]</span>
+                    }
+                    @if (movie.WatchedAt != null)
+                    {
+                        <span class="text-muted small">Watched @movie.WatchedAt.Value.ToShortDateString()</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if ((int)ViewBag.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination justify-content-center">
+            @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link" asp-action="AllWatchedMovies" asp-route-page="@i" asp-route-q="@ViewBag.Query" asp-route-genre="@ViewBag.Genre">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
