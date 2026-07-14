@@ -17,6 +17,8 @@ builder.Services.AddHostedService<ShowUpdateService>();
 builder.Services.AddHostedService<MangaUpdateService>();
 builder.Services.AddScoped<MangaDexService>();
 builder.Services.AddHttpClient<TmdbService>();
+builder.Services.AddScoped<ComickService>();
+builder.Services.AddSingleton<IgdbService>();
 
 builder.Services.AddHttpClient("tmdb", client =>
 {

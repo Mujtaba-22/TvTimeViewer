@@ -18,23 +18,37 @@ public class MangaUpdateService : BackgroundService
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+{
+    try
     {
         await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+    }
+    catch (OperationCanceledException)
+    {
+        return;
+    }
 
-        while (!stoppingToken.IsCancellationRequested)
+    while (!stoppingToken.IsCancellationRequested)
+    {
+        try
         {
-            try
-            {
-                await CheckForNewChapters(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Manga auto-update failed.");
-            }
+            await CheckForNewChapters(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Manga auto-update failed.");
+        }
 
+        try
+        {
             await Task.Delay(TimeSpan.FromHours(6), stoppingToken);
         }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
     }
+}
 
     private async Task CheckForNewChapters(CancellationToken ct)
     {

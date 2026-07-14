@@ -4,8 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - TV Time Viewer</title>
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" />
+    @await RenderSectionAsync("Styles", required: false)
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('submit', function (e) {
@@ -59,22 +62,25 @@
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item"><a class="nav-link text-white" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
                         <li class="nav-item"><a class="nav-link text-white" asp-controller="Library" asp-action="Index">Library</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" asp-controller="Search" asp-action="Index">Search</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" asp-controller="Search" asp-action="Index">Explore</a></li>
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
+
     <footer class="text-center py-3">
         <div class="container">TV Time Viewer &copy; 2026</div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @RenderSection("Scripts", required: false)
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

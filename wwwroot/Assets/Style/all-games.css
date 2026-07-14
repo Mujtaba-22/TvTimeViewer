@@ -1,0 +1,8 @@
+.all-games-cover {
+    height: 220px;
+    object-fit: cover;
+}
+
+.game-card.hidden-by-search {
+    display: none;
+}

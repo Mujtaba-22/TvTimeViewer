@@ -35,6 +35,14 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGFzaGJvYXJkXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/VS/TvTimeViewer/Views/Games/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcR2FtZXNcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/VS/TvTimeViewer/Views/Games/Search.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcR2FtZXNcU2VhcmNoLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/VS/TvTimeViewer/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -43,20 +51,20 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/VS/TvTimeViewer/Views/Library/AllGames.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGlicmFyeVxBbGxHYW1lcy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/VS/TvTimeViewer/Views/Library/AllManga.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGlicmFyeVxBbGxNYW5nYS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/VS/TvTimeViewer/Views/Library/AllMovies.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGlicmFyeVxBbGxNb3ZpZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/VS/TvTimeViewer/Views/Library/AllShows.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGlicmFyeVxBbGxTaG93cy5jc2h0bWw=
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/VS/TvTimeViewer/Views/Library/AllWatchedMovies.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGlicmFyeVxBbGxXYXRjaGVkTW92aWVzLmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/VS/TvTimeViewer/Views/Library/AllWatchedShows.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGlicmFyeVxBbGxXYXRjaGVkU2hvd3MuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/VS/TvTimeViewer/Views/Library/Index.cshtml]
@@ -69,6 +77,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/VS/TvTimeViewer/Views/Manga/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWFuZ2FcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/VS/TvTimeViewer/Views/Manga/Search.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTWFuZ2FcU2VhcmNoLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/VS/TvTimeViewer/Views/Movie/Details.cshtml]

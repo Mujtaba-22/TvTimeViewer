@@ -1,0 +1,11 @@
+.live-search-spinner {
+    right: 12px;
+    top: 10px;
+    display: none;
+}
+
+.manga-result-card .card-img-top,
+.manga-discover-card .card-img-top {
+    height: 260px;
+    object-fit: cover;
+}

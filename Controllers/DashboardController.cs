@@ -5,6 +5,15 @@ using TvTimeViewer.Models;
 
 namespace TvTimeViewer.Controllers;
 
+public class ActivityItem
+{
+    public string Title { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public DateTime When { get; set; }
+    public string Url { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+}
+
 public class DashboardViewModel
 {
     public int TotalShows { get; set; }
@@ -16,9 +25,21 @@ public class DashboardViewModel
     public int WatchedEpisodes { get; set; }
     public int MissingShowPosters { get; set; }
     public int MissingMoviePosters { get; set; }
-    public List<Show> RecentlyWatchedShows { get; set; } = new();
-    public List<Movie> RecentlyWatchedMovies { get; set; } = new();
+
+    public int TotalManga { get; set; }
+    public int CompletedManga { get; set; }
+    public int TotalChaptersRead { get; set; }
+
+    public int TotalGames { get; set; }
+    public int CompletedGames { get; set; }
+    public int PlayingGames { get; set; }
+    public double TotalHoursPlayed { get; set; }
+
     public List<Show> TopUnwatchedShows { get; set; } = new();
+    public List<Manga> InProgressManga { get; set; } = new();
+    public List<Game> InProgressGames { get; set; } = new();
+
+    public List<ActivityItem> RecentActivity { get; set; } = new();
 }
 
 public class DashboardController : Controller
@@ -28,37 +49,90 @@ public class DashboardController : Controller
 
     public async Task<IActionResult> Index()
     {
+        var shows = await _db.Shows.Include(s => s.Episodes).ToListAsync();
+        var movies = await _db.Movies.ToListAsync();
+        var manga = await _db.Manga.ToListAsync();
+        var games = await _db.Games.ToListAsync();
+
         var vm = new DashboardViewModel
         {
-            TotalShows = await _db.Shows.CountAsync(),
-            FollowedShows = await _db.Shows.CountAsync(s => s.Followed),
-            ArchivedShows = await _db.Shows.CountAsync(s => s.Archived),
-            TotalMovies = await _db.Movies.CountAsync(),
-            WatchedMovies = await _db.Movies.CountAsync(m => m.Watched),
-            TotalEpisodes = await _db.Episodes.CountAsync(),
-            WatchedEpisodes = await _db.Episodes.CountAsync(e => e.Watched),
-            MissingShowPosters = await _db.Shows.CountAsync(s => s.PosterImage == null),
-            MissingMoviePosters = await _db.Movies.CountAsync(m => m.PosterImage == null),
+            TotalShows = shows.Count,
+            FollowedShows = shows.Count(s => s.Followed),
+            ArchivedShows = shows.Count(s => s.Archived),
+            TotalMovies = movies.Count,
+            WatchedMovies = movies.Count(m => m.Watched),
+            TotalEpisodes = shows.Sum(s => s.Episodes.Count),
+            WatchedEpisodes = shows.Sum(s => s.Episodes.Count(e => e.Watched)),
+            MissingShowPosters = shows.Count(s => s.PosterImage == null),
+            MissingMoviePosters = movies.Count(m => m.PosterImage == null),
 
-            RecentlyWatchedShows = await _db.Shows
-                .Where(s => s.LastWatchedAt != null)
-                .OrderByDescending(s => s.LastWatchedAt)
-                .Take(6)
-                .ToListAsync(),
+            TotalManga = manga.Count,
+            CompletedManga = manga.Count(m => m.Completed),
+            TotalChaptersRead = manga.Sum(m => m.ChaptersRead),
 
-            RecentlyWatchedMovies = await _db.Movies
-                .Where(m => m.WatchedAt != null)
-                .OrderByDescending(m => m.WatchedAt)
-                .Take(6)
-                .ToListAsync(),
+            TotalGames = games.Count,
+            CompletedGames = games.Count(g => g.Completed),
+            PlayingGames = games.Count(g => g.Playing),
+            TotalHoursPlayed = games.Sum(g => g.HoursPlayed),
 
-            TopUnwatchedShows = await _db.Shows
-                .Include(s => s.Episodes)
+            TopUnwatchedShows = shows
                 .Where(s => s.Followed && s.Episodes.Any(e => !e.Watched))
                 .OrderByDescending(s => s.Episodes.Count(e => !e.Watched))
-                .Take(6)
-                .ToListAsync()
+                .Take(8)
+                .ToList(),
+
+            InProgressManga = manga
+                .Where(m => !m.Completed && m.ChaptersRead > 0)
+                .OrderByDescending(m => m.LastReadAt)
+                .Take(8)
+                .ToList(),
+
+            InProgressGames = games
+                .Where(g => g.Playing)
+                .OrderByDescending(g => g.LastPlayedAt)
+                .Take(8)
+                .ToList()
         };
+
+        var activity = new List<ActivityItem>();
+
+        activity.AddRange(shows.Where(s => s.LastWatchedAt != null).Select(s => new ActivityItem
+        {
+            Title = s.Title,
+            Type = "Show",
+            When = s.LastWatchedAt!.Value,
+            Url = Url.Action("Details", "Show", new { id = s.Id })!,
+            Icon = "📺"
+        }));
+
+        activity.AddRange(movies.Where(m => m.WatchedAt != null).Select(m => new ActivityItem
+        {
+            Title = m.Title,
+            Type = "Movie",
+            When = m.WatchedAt!.Value,
+            Url = Url.Action("Details", "Movie", new { id = m.Id })!,
+            Icon = "🎬"
+        }));
+
+        activity.AddRange(manga.Where(m => m.LastReadAt != null).Select(m => new ActivityItem
+        {
+            Title = m.Title,
+            Type = "Manga",
+            When = m.LastReadAt!.Value,
+            Url = Url.Action("Details", "Manga", new { id = m.Id })!,
+            Icon = "📖"
+        }));
+
+        activity.AddRange(games.Where(g => g.LastPlayedAt != null).Select(g => new ActivityItem
+        {
+            Title = g.Title,
+            Type = "Game",
+            When = g.LastPlayedAt!.Value,
+            Url = Url.Action("Details", "Games", new { id = g.Id })!,
+            Icon = "🎮"
+        }));
+
+        vm.RecentActivity = activity.OrderByDescending(a => a.When).Take(12).ToList();
 
         return View(vm);
     }

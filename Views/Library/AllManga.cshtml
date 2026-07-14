@@ -1,0 +1,138 @@
+@model List<TvTimeViewer.Models.Manga>
+@{
+    ViewData["Title"] = "All Manga";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/Style/all-manga.css" />
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>All Manga, Manhwa & Manhua</h2>
+    <div>
+        <a asp-controller="Manga" asp-action="Search" class="btn btn-outline-primary btn-sm me-2">🔍 Explore</a>
+        <a asp-controller="Library" asp-action="Index" class="btn btn-outline-secondary btn-sm">← Back to Dashboard</a>
+    </div>
+</div>
+
+<form asp-controller="Library" asp-action="AllManga" method="get" class="row g-2 mb-4" id="allMangaFilterForm">
+    <div class="col-md-3">
+        <select name="format" class="form-select manga-auto-submit">
+            <option value="" selected="@(ViewBag.Format == null)">All Formats</option>
+            <option value="Manga" selected="@(ViewBag.Format == "Manga")">Manga</option>
+            <option value="Manhwa" selected="@(ViewBag.Format == "Manhwa")">Manhwa</option>
+            <option value="Manhua" selected="@(ViewBag.Format == "Manhua")">Manhua</option>
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <input type="text" name="q" value="@ViewBag.Query" class="form-control" placeholder="Search manga by title..." />
+    </div>
+
+    <div class="col-md-2">
+        <select name="status" class="form-select manga-auto-submit">
+            <option value="" selected="@(ViewBag.Status == null)">All Status</option>
+            <option value="reading" selected="@(ViewBag.Status == "reading")">Reading</option>
+            <option value="not-started" selected="@(ViewBag.Status == "not-started")">Not Started</option>
+            <option value="completed" selected="@(ViewBag.Status == "completed")">Completed</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <select name="genre" class="form-select manga-auto-submit">
+            <option value="">All Genres</option>
+            @foreach (var g in (List<string>)ViewBag.AllGenres)
+            {
+                <option value="@g" selected="@(ViewBag.Genre == g)">@g</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+    </div>
+</form>
+
+<p class="text-muted small mb-3">@ViewBag.TotalResults result(s) found</p>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">No manga match your search or filter.</div>
+}
+
+<div class="row g-3 mb-4">
+    @foreach (var manga in Model)
+    {
+        var readCount = manga.ChaptersRead;
+        var totalCount = manga.TotalChapters;
+        var percent = totalCount.HasValue && totalCount.Value > 0
+            ? (int)((double)readCount / totalCount.Value * 100)
+            : 0;
+
+        <div class="col-6 col-md-3 col-lg-2">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Manga" asp-action="Details" asp-route-id="@manga.Id">
+                    <img src="@(manga.CoverImage != null ? Url.Action("Cover", "Manga", new { id = manga.Id }) : (manga.CoverUrl ?? "/images/placeholder.png"))"
+                         class="card-img-top all-manga-cover"
+                         alt="@manga.Title" />
+                </a>
+
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@manga.Title</p>
+                    <span class="badge bg-info text-dark mb-1">@manga.Format</span>
+
+                    @if (!string.IsNullOrEmpty(manga.Genre))
+                    {
+                        <span class="badge bg-light text-dark border mb-1">@manga.Genre.Split(',')[0]</span>
+                    }
+
+                    @if (manga.Completed)
+                    {
+                        <span class="badge bg-success">✓ Completed</span>
+                    }
+                    else if (totalCount.HasValue)
+                    {
+                        <div class="progress mb-1 manga-progress-bar">
+                            <div class="progress-bar bg-primary" style="width:@percent%"></div>
+                        </div>
+                        <span class="text-muted small">Ch. @readCount / @totalCount</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">Ch. @readCount read</span>
+                    }
+                </div>
+
+                <div class="card-footer p-2 bg-white border-0">
+                    <form asp-controller="Manga" asp-action="Delete" asp-route-id="@manga.Id" method="post" data-confirm="Remove this title?">
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">✕ Remove</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if ((int)ViewBag.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination justify-content-center">
+            @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(i == (int)ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="AllManga"
+                       asp-route-page="@i"
+                       asp-route-q="@ViewBag.Query"
+                       asp-route-format="@ViewBag.Format"
+                       asp-route-genre="@ViewBag.Genre"
+                       asp-route-status="@ViewBag.Status">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@section Scripts {
+    <script src="~/Assets/JavaScript/all-manga.js"></script>
+}

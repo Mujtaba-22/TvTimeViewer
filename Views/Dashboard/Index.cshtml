@@ -3,137 +3,230 @@
     ViewData["Title"] = "Dashboard";
     int episodePct = Model.TotalEpisodes > 0 ? Model.WatchedEpisodes * 100 / Model.TotalEpisodes : 0;
     int moviePct = Model.TotalMovies > 0 ? Model.WatchedMovies * 100 / Model.TotalMovies : 0;
+    int mangaPct = Model.TotalManga > 0 ? Model.CompletedManga * 100 / Model.TotalManga : 0;
+    int gamePct = Model.TotalGames > 0 ? Model.CompletedGames * 100 / Model.TotalGames : 0;
     int posterPct = (Model.TotalShows + Model.TotalMovies) > 0
         ? 100 - ((Model.MissingShowPosters + Model.MissingMoviePosters) * 100 / (Model.TotalShows + Model.TotalMovies))
         : 0;
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/Style/dashboard.css" />
+}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Dashboard</h2>
-    <a asp-controller="Library" asp-action="Index" class="btn btn-outline-secondary btn-sm">Go to Library</a>
+    <div>
+        <h2 class="mb-1">Dashboard</h2>
+        <p class="text-muted mb-0">Your entire media library at a glance</p>
+    </div>
+    <a asp-controller="Library" asp-action="Index" class="btn btn-primary">Go to Library</a>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="text-muted">Shows</h6>
-                <h3>@Model.TotalShows</h3>
-                <span class="badge bg-success">@Model.FollowedShows following</span>
-                @if (Model.ArchivedShows > 0)
-                {
-                    <span class="badge bg-secondary">@Model.ArchivedShows archived</span>
-                }
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon">📺</div>
+            <div>
+                <div class="stat-label">Shows</div>
+                <div class="stat-value">@Model.TotalShows</div>
+                <div class="stat-sub">
+                    <span class="badge bg-success">@Model.FollowedShows following</span>
+                    @if (Model.ArchivedShows > 0)
+                    {
+                        <span class="badge bg-secondary">@Model.ArchivedShows archived</span>
+                    }
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="text-muted">Movies</h6>
-                <h3>@Model.TotalMovies</h3>
-                <span class="badge bg-success">@Model.WatchedMovies watched</span>
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon">🎬</div>
+            <div>
+                <div class="stat-label">Movies</div>
+                <div class="stat-value">@Model.TotalMovies</div>
+                <div class="stat-sub">
+                    <span class="badge bg-success">@Model.WatchedMovies watched</span>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="text-muted">Episodes</h6>
-                <h3>@Model.WatchedEpisodes<span class="text-muted fs-6">/@Model.TotalEpisodes</span></h3>
-                <span class="badge bg-info text-dark">@episodePct% complete</span>
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon">📖</div>
+            <div>
+                <div class="stat-label">Manga & Manhwa</div>
+                <div class="stat-value">@Model.TotalManga</div>
+                <div class="stat-sub">
+                    <span class="badge bg-success">@Model.CompletedManga completed</span>
+                    <span class="badge bg-info text-dark">@Model.TotalChaptersRead ch. read</span>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card text-center shadow-sm h-100">
-            <div class="card-body">
-                <h6 class="text-muted">Posters Fetched</h6>
-                <h3>@posterPct%</h3>
-                @if (Model.MissingShowPosters + Model.MissingMoviePosters > 0)
-                {
-                    <form asp-controller="Library" asp-action="RefreshPosters" method="post">
-                        <button type="submit" class="btn btn-outline-info btn-sm mt-1">Fetch Missing</button>
-                    </form>
-                }
-                else
-                {
-                    <span class="badge bg-success">All posters loaded</span>
-                }
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon">🎮</div>
+            <div>
+                <div class="stat-label">Games</div>
+                <div class="stat-value">@Model.TotalGames</div>
+                <div class="stat-sub">
+                    <span class="badge bg-primary">@Model.PlayingGames playing</span>
+                    <span class="badge bg-success">@Model.CompletedGames done</span>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-6">
-        <label class="small text-muted">Episode watch progress</label>
-        <div class="progress mb-3" style="height:10px;">
-            <div class="progress-bar bg-success" style="width:@episodePct%"></div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="progress-card">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="small text-muted">Episodes</span>
+                <span class="small fw-semibold">@episodePct%</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar bg-success" style="width:@episodePct%"></div>
+            </div>
+            <div class="small text-muted mt-1">@Model.WatchedEpisodes / @Model.TotalEpisodes</div>
         </div>
     </div>
-    <div class="col-md-6">
-        <label class="small text-muted">Movie watch progress</label>
-        <div class="progress mb-3" style="height:10px;">
-            <div class="progress-bar bg-primary" style="width:@moviePct%"></div>
+
+    <div class="col-md-3">
+        <div class="progress-card">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="small text-muted">Movies</span>
+                <span class="small fw-semibold">@moviePct%</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar bg-warning" style="width:@moviePct%"></div>
+            </div>
+            <div class="small text-muted mt-1">@Model.WatchedMovies / @Model.TotalMovies</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="progress-card">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="small text-muted">Manga completed</span>
+                <span class="small fw-semibold">@mangaPct%</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar bg-info" style="width:@mangaPct%"></div>
+            </div>
+            <div class="small text-muted mt-1">@Model.CompletedManga / @Model.TotalManga</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="progress-card">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="small text-muted">Games completed</span>
+                <span class="small fw-semibold">@gamePct%</span>
+            </div>
+            <div class="progress" style="height:8px;">
+                <div class="progress-bar bg-danger" style="width:@gamePct%"></div>
+            </div>
+            <div class="small text-muted mt-1">@Model.CompletedGames / @Model.TotalGames · @Model.TotalHoursPlayed.ToString("0") hrs total</div>
         </div>
     </div>
 </div>
+
+@if (Model.MissingShowPosters + Model.MissingMoviePosters > 0)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center mb-4">
+        <span>@(Model.MissingShowPosters + Model.MissingMoviePosters) posters missing (@posterPct% fetched)</span>
+        <form asp-controller="Library" asp-action="RefreshPosters" method="post">
+            <button type="submit" class="btn btn-outline-dark btn-sm">Fetch Missing</button>
+        </form>
+    </div>
+}
 
 @if (Model.TopUnwatchedShows.Any())
 {
     <h4 class="mb-3">Continue Watching</h4>
-    <div class="row g-3 mb-5">
+    <div class="dash-scroll-row mb-5">
         @foreach (var show in Model.TopUnwatchedShows)
         {
             var unwatched = show.Episodes.Count(e => !e.Watched);
-            <div class="col-6 col-md-4 col-lg-2">
-                <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id" class="text-decoration-none text-dark">
-                    <div class="card h-100 shadow-sm">
-                        <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
-                             class="card-img-top" alt="@show.Title" style="height:200px; object-fit:cover;" />
-                        <div class="card-body p-2">
-                            <p class="card-text small fw-semibold mb-1">@show.Title</p>
-                            <span class="badge bg-warning text-dark">@unwatched left</span>
-                        </div>
+            <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id" class="dash-scroll-item text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm">
+                    <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@show.Title" style="height:200px; object-fit:cover;" />
+                    <div class="card-body p-2">
+                        <p class="card-text small fw-semibold mb-1">@show.Title</p>
+                        <span class="badge bg-warning text-dark">@unwatched left</span>
                     </div>
-                </a>
-            </div>
+                </div>
+            </a>
         }
     </div>
 }
 
-<div class="row">
-    <div class="col-md-6">
-        <h5 class="mb-3">Recently Watched Shows</h5>
-        @if (!Model.RecentlyWatchedShows.Any())
+@if (Model.InProgressManga.Any())
+{
+    <h4 class="mb-3">Continue Reading</h4>
+    <div class="dash-scroll-row mb-5">
+        @foreach (var manga in Model.InProgressManga)
         {
-            <p class="text-muted small">No episodes marked as watched yet.</p>
+            <a asp-controller="Manga" asp-action="Details" asp-route-id="@manga.Id" class="dash-scroll-item text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm">
+                    <img src="@(manga.CoverImage != null ? Url.Action("Cover", "Manga", new { id = manga.Id }) : (manga.CoverUrl ?? "/images/placeholder.png"))"
+                         class="card-img-top" alt="@manga.Title" style="height:200px; object-fit:cover;" />
+                    <div class="card-body p-2">
+                        <p class="card-text small fw-semibold mb-1">@manga.Title</p>
+                        <span class="badge bg-info text-dark">Ch. @manga.ChaptersRead@(manga.TotalChapters.HasValue ? " / " + manga.TotalChapters : "")</span>
+                    </div>
+                </div>
+            </a>
         }
-        <ul class="list-group mb-4">
-            @foreach (var show in Model.RecentlyWatchedShows)
-            {
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id" class="text-decoration-none">@show.Title</a>
-                    <span class="text-muted small">@show.LastWatchedAt?.ToShortDateString()</span>
-                </li>
-            }
-        </ul>
     </div>
-    <div class="col-md-6">
-        <h5 class="mb-3">Recently Watched Movies</h5>
-        @if (!Model.RecentlyWatchedMovies.Any())
+}
+
+@if (Model.InProgressGames.Any())
+{
+    <h4 class="mb-3">Currently Playing</h4>
+    <div class="dash-scroll-row mb-5">
+        @foreach (var game in Model.InProgressGames)
         {
-            <p class="text-muted small">No movies marked as watched yet.</p>
+            <a asp-controller="Games" asp-action="Details" asp-route-id="@game.Id" class="dash-scroll-item text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm">
+                    <img src="@(game.CoverImage != null ? Url.Action("Cover", "Games", new { id = game.Id }) : (game.CoverUrl ?? "/images/placeholder.png"))"
+                         class="card-img-top" alt="@game.Title" style="height:200px; object-fit:cover;" />
+                    <div class="card-body p-2">
+                        <p class="card-text small fw-semibold mb-1">@game.Title</p>
+                        <span class="badge bg-primary">@game.HoursPlayed.ToString("0.#") hrs</span>
+                    </div>
+                </div>
+            </a>
         }
-        <ul class="list-group mb-4">
-            @foreach (var movie in Model.RecentlyWatchedMovies)
-            {
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <a asp-controller="Movie" asp-action="Details" asp-route-id="@movie.Id" class="text-decoration-none">@movie.Title</a>
-                    <span class="text-muted small">@movie.WatchedAt?.ToShortDateString()</span>
-                </li>
-            }
-        </ul>
     </div>
-</div>
+}
+
+<h4 class="mb-3">Recent Activity</h4>
+@if (!Model.RecentActivity.Any())
+{
+    <p class="text-muted small">Nothing watched, read, or played yet.</p>
+}
+else
+{
+    <div class="activity-feed mb-4">
+        @foreach (var item in Model.RecentActivity)
+        {
+            <a href="@item.Url" class="activity-row text-decoration-none">
+                <span class="activity-icon">@item.Icon</span>
+                <span class="activity-title">@item.Title</span>
+                <span class="badge bg-light text-dark border">@item.Type</span>
+                <span class="activity-date">@item.When.ToShortDateString()</span>
+            </a>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script src="~/Assets/JavaScript/dashboard.js"></script>
+}

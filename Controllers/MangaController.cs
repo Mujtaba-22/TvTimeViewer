@@ -14,17 +14,25 @@ public class MangaController : Controller
     private readonly IMemoryCache _cache;
     private readonly AppDbContext _db;
     private readonly MangaDexService _mangaDex;
+    private readonly ComickService _comick;
     private const string AniListUrl = "https://graphql.anilist.co";
 
-    public MangaController(IHttpClientFactory httpFactory, IMemoryCache cache, AppDbContext db, MangaDexService mangaDex)
+    public MangaController(IHttpClientFactory httpFactory, IMemoryCache cache, AppDbContext db, MangaDexService mangaDex, ComickService comick)
     {
         _httpFactory = httpFactory;
         _cache = cache;
         _db = db;
         _mangaDex = mangaDex;
+        _comick = comick;
     }
 
     public IActionResult Index() => View();
+
+    [HttpGet]
+    public IActionResult Search()
+    {
+        return View(new List<object>());
+    }
 
     public async Task<IActionResult> Details(int id)
     {
@@ -34,12 +42,54 @@ public class MangaController : Controller
 
         if (manga == null) return NotFound();
 
-        if (!manga.Chapters.Any() && manga.TotalChapters.HasValue && manga.TotalChapters.Value > 0)
+        if (!manga.Chapters.Any())
         {
-            for (int i = 1; i <= manga.TotalChapters.Value; i++)
-                manga.Chapters.Add(new MangaChapter { MangaId = manga.Id, ChapterNumber = i, Read = false, AddedAt = DateTime.UtcNow });
+            int? chaptersToGenerate = manga.TotalChapters;
 
-            await _db.SaveChangesAsync();
+            if (!chaptersToGenerate.HasValue || chaptersToGenerate.Value == 0)
+            {
+                if (string.IsNullOrEmpty(manga.ComickHid))
+                {
+                    manga.ComickHid = await _comick.FindComickHidAsync(manga.Title);
+                    if (!string.IsNullOrEmpty(manga.ComickHid))
+                        await _db.SaveChangesAsync();
+                }
+
+                if (!string.IsNullOrEmpty(manga.ComickHid))
+                    chaptersToGenerate = await _comick.GetChapterCountAsync(manga.ComickHid);
+
+                if (!chaptersToGenerate.HasValue || chaptersToGenerate.Value == 0)
+                {
+                    if (string.IsNullOrEmpty(manga.MangaDexId))
+                    {
+                        manga.MangaDexId = await _mangaDex.FindMangaDexIdAsync(manga.Title);
+                        if (!string.IsNullOrEmpty(manga.MangaDexId))
+                            await _db.SaveChangesAsync();
+                    }
+
+                    if (!string.IsNullOrEmpty(manga.MangaDexId))
+                    {
+                        chaptersToGenerate = await _mangaDex.GetChapterCountFromAggregateAsync(manga.MangaDexId);
+
+                        if (!chaptersToGenerate.HasValue || chaptersToGenerate.Value == 0)
+                        {
+                            var (latestChapterNumber, _) = await _mangaDex.GetLatestChapterAsync(manga.MangaDexId);
+                            if (latestChapterNumber.HasValue && latestChapterNumber.Value > 0)
+                                chaptersToGenerate = (int)Math.Floor(latestChapterNumber.Value);
+                        }
+                    }
+                }
+            }
+
+            if (chaptersToGenerate.HasValue && chaptersToGenerate.Value > 0)
+            {
+                for (int i = 1; i <= chaptersToGenerate.Value; i++)
+                    manga.Chapters.Add(new MangaChapter { MangaId = manga.Id, ChapterNumber = i, Read = false, AddedAt = DateTime.UtcNow });
+
+                manga.TotalChapters = chaptersToGenerate.Value;
+
+                await _db.SaveChangesAsync();
+            }
         }
 
         manga.Chapters = manga.Chapters.OrderBy(c => c.ChapterNumber).ToList();
@@ -50,16 +100,16 @@ public class MangaController : Controller
 
         if (!manga.Completed)
         {
-            if (string.IsNullOrEmpty(manga.MangaDexId))
+            if (string.IsNullOrEmpty(manga.ComickHid))
             {
-                manga.MangaDexId = await _mangaDex.FindMangaDexIdAsync(manga.Title);
-                if (!string.IsNullOrEmpty(manga.MangaDexId))
+                manga.ComickHid = await _comick.FindComickHidAsync(manga.Title);
+                if (!string.IsNullOrEmpty(manga.ComickHid))
                     await _db.SaveChangesAsync();
             }
 
-            if (!string.IsNullOrEmpty(manga.MangaDexId))
+            if (!string.IsNullOrEmpty(manga.ComickHid))
             {
-                var recentChapters = await _mangaDex.GetRecentChaptersAsync(manga.MangaDexId, 5);
+                var recentChapters = await _comick.GetRecentChaptersAsync(manga.ComickHid, 5);
 
                 if (recentChapters.Count >= 2)
                 {
@@ -76,7 +126,41 @@ public class MangaController : Controller
                         estimatedNextDate = lastPublish.AddDays(avgGap);
                         var remaining = (estimatedNextDate.Value - DateTime.UtcNow).TotalDays;
                         estimatedDaysRemaining = remaining > 0 ? (int)Math.Ceiling(remaining) : 0;
-                        estimateSource = "mangadex";
+                        estimateSource = "comick";
+                    }
+                }
+            }
+
+            if (estimateSource == "none")
+            {
+                if (string.IsNullOrEmpty(manga.MangaDexId))
+                {
+                    manga.MangaDexId = await _mangaDex.FindMangaDexIdAsync(manga.Title);
+                    if (!string.IsNullOrEmpty(manga.MangaDexId))
+                        await _db.SaveChangesAsync();
+                }
+
+                if (!string.IsNullOrEmpty(manga.MangaDexId))
+                {
+                    var recentChapters = await _mangaDex.GetRecentChaptersAsync(manga.MangaDexId, 5);
+
+                    if (recentChapters.Count >= 2)
+                    {
+                        var ordered = recentChapters.OrderBy(c => c.publishAt).ToList();
+                        var gaps = new List<double>();
+
+                        for (int i = 1; i < ordered.Count; i++)
+                            gaps.Add((ordered[i].publishAt - ordered[i - 1].publishAt).TotalDays);
+
+                        if (gaps.Any(g => g > 0.1))
+                        {
+                            var avgGap = gaps.Where(g => g > 0.1).Average();
+                            var lastPublish = ordered.Max(c => c.publishAt);
+                            estimatedNextDate = lastPublish.AddDays(avgGap);
+                            var remaining = (estimatedNextDate.Value - DateTime.UtcNow).TotalDays;
+                            estimatedDaysRemaining = remaining > 0 ? (int)Math.Ceiling(remaining) : 0;
+                            estimateSource = "mangadex";
+                        }
                     }
                 }
             }
@@ -201,6 +285,129 @@ public class MangaController : Controller
 
             _cache.Set(cacheKey, genres, TimeSpan.FromHours(24));
             return Json(genres);
+        }
+        catch (Exception ex)
+        {
+            return Json(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> SearchJson(string q)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2)
+            return Json(new List<object>());
+
+        var query = @"
+        query {
+          Page(page: 1, perPage: 20) {
+            media(type: MANGA, search: """ + q.Replace("\"", "") + @""", sort: POPULARITY_DESC) {
+              id
+              title { romaji english }
+              coverImage { large }
+              format
+              countryOfOrigin
+              averageScore
+              startDate { year }
+            }
+          }
+        }";
+
+        var payload = JsonSerializer.Serialize(new { query });
+        var client = _httpFactory.CreateClient();
+
+        try
+        {
+            var response = await client.PostAsync(AniListUrl,
+                new StringContent(payload, System.Text.Encoding.UTF8, "application/json"));
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var media = doc.RootElement.GetProperty("data").GetProperty("Page").GetProperty("media");
+
+            var items = new List<object>();
+            foreach (var item in media.EnumerateArray())
+            {
+                var titleEl = item.GetProperty("title");
+                var title = titleEl.TryGetProperty("english", out var en) && en.ValueKind == JsonValueKind.String
+                    ? en.GetString()
+                    : titleEl.GetProperty("romaji").GetString();
+
+                var country = item.TryGetProperty("countryOfOrigin", out var co) ? co.GetString() : "JP";
+                var formatLabel = country switch { "KR" => "Manhwa", "CN" => "Manhua", _ => "Manga" };
+
+                items.Add(new
+                {
+                    aniListId = item.GetProperty("id").GetInt32(),
+                    title,
+                    poster = item.GetProperty("coverImage").GetProperty("large").GetString(),
+                    year = item.TryGetProperty("startDate", out var sd) && sd.TryGetProperty("year", out var yr) && yr.ValueKind == JsonValueKind.Number ? yr.GetInt32().ToString() : "",
+                    type = formatLabel,
+                    format = formatLabel.ToLower()
+                });
+            }
+
+            return Json(items);
+        }
+        catch (Exception ex)
+        {
+            return Json(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> TopRated()
+    {
+        async Task<List<object>> FetchTop(string country)
+        {
+            var query = @"
+            query {
+              Page(page: 1, perPage: 12) {
+                media(type: MANGA, countryOfOrigin: """ + country + @""", sort: SCORE_DESC) {
+                  id
+                  title { romaji english }
+                  coverImage { large }
+                  averageScore
+                  startDate { year }
+                }
+              }
+            }";
+
+            var payload = JsonSerializer.Serialize(new { query });
+            var client = _httpFactory.CreateClient();
+            var response = await client.PostAsync(AniListUrl,
+                new StringContent(payload, System.Text.Encoding.UTF8, "application/json"));
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var media = doc.RootElement.GetProperty("data").GetProperty("Page").GetProperty("media");
+
+            var items = new List<object>();
+            foreach (var item in media.EnumerateArray())
+            {
+                var titleEl = item.GetProperty("title");
+                var title = titleEl.TryGetProperty("english", out var en) && en.ValueKind == JsonValueKind.String
+                    ? en.GetString()
+                    : titleEl.GetProperty("romaji").GetString();
+
+                items.Add(new
+                {
+                    aniListId = item.GetProperty("id").GetInt32(),
+                    title,
+                    poster = item.GetProperty("coverImage").GetProperty("large").GetString(),
+                    rating = item.TryGetProperty("averageScore", out var s) && s.ValueKind == JsonValueKind.Number ? s.GetInt32() / 10.0 : 0,
+                    releaseDate = item.TryGetProperty("startDate", out var sd) && sd.TryGetProperty("year", out var yr) && yr.ValueKind == JsonValueKind.Number ? yr.GetInt32().ToString() : "",
+                    isMovie = false,
+                    format = country == "KR" ? "manhwa" : "manga"
+                });
+            }
+
+            return items;
+        }
+
+        try
+        {
+            var manga = await FetchTop("JP");
+            var manhwa = await FetchTop("KR");
+            return Json(new { manga, manhwa });
         }
         catch (Exception ex)
         {

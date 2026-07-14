@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TvTimeViewer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+027a20f9dbd780166698933d84f2a4743f1a94c6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+51e09bd2d891846e8ae0b56805e3c19897846d97")]
 [assembly: System.Reflection.AssemblyProductAttribute("TvTimeViewer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TvTimeViewer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

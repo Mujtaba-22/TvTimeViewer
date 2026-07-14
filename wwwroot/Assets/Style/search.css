@@ -1,0 +1,11 @@
+.search-spinner {
+    right: 12px;
+    top: 10px;
+    display: none;
+}
+
+.search-result-card .card-img-top,
+.discover-card .card-img-top {
+    height: 220px;
+    object-fit: cover;
+}

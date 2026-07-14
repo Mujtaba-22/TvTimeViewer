@@ -4,6 +4,7 @@ public class Manga
 {
     public int Id { get; set; }
     public string? MangaDexId { get; set; }
+    public string? ComickHid { get; set; }
     public int? AniListId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Format { get; set; } = "Manga";

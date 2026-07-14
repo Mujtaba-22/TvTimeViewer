@@ -62,6 +62,62 @@ namespace TvTimeViewer.Migrations
                     b.ToTable("Episodes");
                 });
 
+            modelBuilder.Entity("TvTimeViewer.Models.Game", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("CoverContentType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("CoverImage")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("CoverUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Genre")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("HoursPlayed")
+                        .HasColumnType("float");
+
+                    b.Property<int>("IgdbId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastPlayedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Platform")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Playing")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Rating")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("ReleaseYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Games");
+                });
+
             modelBuilder.Entity("TvTimeViewer.Models.Manga", b =>
                 {
                     b.Property<int>("Id")
@@ -75,6 +131,9 @@ namespace TvTimeViewer.Migrations
 
                     b.Property<int>("ChaptersRead")
                         .HasColumnType("int");
+
+                    b.Property<string>("ComickHid")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("Completed")
                         .HasColumnType("bit");

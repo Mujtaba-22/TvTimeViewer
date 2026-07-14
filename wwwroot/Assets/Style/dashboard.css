@@ -1,0 +1,91 @@
+.stat-card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 100%;
+}
+
+.stat-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.stat-label {
+    color: #9a9a9a;
+    font-size: 0.85rem;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.stat-sub {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.progress-card {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.dash-scroll-row {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+}
+
+.dash-scroll-item {
+    flex: 0 0 auto;
+    width: 170px;
+}
+
+.activity-feed {
+    background: #1a1a1a;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.activity-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: inherit;
+}
+
+.activity-row:last-child {
+    border-bottom: none;
+}
+
+.activity-row:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.activity-icon {
+    font-size: 1.1rem;
+}
+
+.activity-title {
+    flex: 1;
+    font-weight: 500;
+}
+
+.activity-date {
+    color: #9a9a9a;
+    font-size: 0.85rem;
+    min-width: 90px;
+    text-align: right;
+}

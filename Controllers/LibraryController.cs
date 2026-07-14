@@ -17,6 +17,7 @@ public class LibraryViewModel
     public List<Movie> Movies { get; set; } = new();
     public List<Movie> WatchedMovies { get; set; } = new();
     public List<Manga> MangaList { get; set; } = new();
+    public List<Game> GamesList { get; set; } = new();
 }
 
 public class LibraryController : Controller
@@ -40,31 +41,21 @@ public class LibraryController : Controller
     }
 
     public async Task<IActionResult> Index()
+{
+    var model = new LibraryViewModel
     {
-        var showsWithEpisodes = await _db.Shows
+        CurrentlyWatching = await _db.Shows
             .Include(s => s.Episodes)
-            .OrderBy(s => s.Title)
-            .ToListAsync();
+            .Where(s => s.Episodes.Any(e => e.Watched) && s.Episodes.Any(e => !e.Watched))
+            .ToListAsync(),
+        Shows = await _db.Shows.Include(s => s.Episodes).ToListAsync(),
+        Movies = await _db.Movies.ToListAsync(),
+        MangaList = await _db.Manga.ToListAsync(),
+        GamesList = await _db.Games.OrderByDescending(g => g.AddedAt).ToListAsync()
+    };
 
-        var movies = await _db.Movies.OrderBy(m => m.Title).ToListAsync();
-        var manga = await _db.Manga.OrderBy(m => m.Title).ToListAsync();
-
-        var vm = new LibraryViewModel
-        {
-            Shows = showsWithEpisodes,
-            WatchedShows = showsWithEpisodes
-                .Where(s => s.Episodes.Any() && s.Episodes.All(e => e.Watched))
-                .ToList(),
-            CurrentlyWatching = showsWithEpisodes
-                .Where(s => s.Episodes.Any(e => e.Watched) && s.Episodes.Any(e => !e.Watched))
-                .OrderByDescending(s => s.LastWatchedAt)
-                .ToList(),
-            Movies = movies,
-            WatchedMovies = movies.Where(m => m.Watched).ToList(),
-            MangaList = manga
-        };
-        return View(vm);
-    }
+    return View(model);
+}
 
     public async Task<IActionResult> AllShows(string? q, string? filter, string? genre, string? watchStatus, int page = 1)
     {
@@ -143,6 +134,11 @@ public class LibraryController : Controller
 
         return View(shows);
     }
+    public async Task<IActionResult> AllGames()
+{
+    var games = await _db.Games.OrderByDescending(g => g.AddedAt).ToListAsync();
+    return View(games);
+}
 
     public async Task<IActionResult> AllMovies(string? q, string? filter, string? genre, int page = 1)
     {
@@ -216,6 +212,53 @@ public class LibraryController : Controller
 
         return Json(new { jobId });
     }
+    public async Task<IActionResult> AllManga(string? q, string? format, string? status, string? genre, int page = 1)
+{
+    const int pageSize = 24;
+    var query = _db.Manga.AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(q))
+        query = query.Where(m => m.Title.Contains(q));
+
+    if (!string.IsNullOrWhiteSpace(format))
+        query = query.Where(m => m.Format == format);
+
+    if (!string.IsNullOrWhiteSpace(genre))
+        query = query.Where(m => m.Genre != null && m.Genre.Contains(genre));
+
+    var allMatching = await query.OrderBy(m => m.Title).ToListAsync();
+
+    allMatching = status switch
+    {
+        "completed" => allMatching.Where(m => m.Completed).ToList(),
+        "reading" => allMatching.Where(m => !m.Completed && m.ChaptersRead > 0).ToList(),
+        "not-started" => allMatching.Where(m => !m.Completed && m.ChaptersRead == 0).ToList(),
+        _ => allMatching
+    };
+
+    var totalManga = allMatching.Count;
+    var mangaList = allMatching.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+    var distinctGenres = (await _db.Manga
+            .Where(m => m.Genre != null)
+            .Select(m => m.Genre)
+            .ToListAsync())
+        .SelectMany(g => g!.Split(',', StringSplitOptions.TrimEntries))
+        .Distinct()
+        .OrderBy(g => g)
+        .ToList();
+
+    ViewBag.CurrentPage = page;
+    ViewBag.TotalPages = (int)Math.Ceiling(totalManga / (double)pageSize);
+    ViewBag.Query = q;
+    ViewBag.Format = format;
+    ViewBag.Status = status;
+    ViewBag.Genre = genre;
+    ViewBag.TotalResults = totalManga;
+    ViewBag.AllGenres = distinctGenres;
+
+    return View(mangaList);
+}
 
     private async Task RunImportJob(string jobId, byte[] zipBytes)
     {

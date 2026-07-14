@@ -1,0 +1,28 @@
+.game-details-header {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.game-cover {
+    width: 200px;
+    height: 280px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.game-hours-input {
+    width: 120px;
+}
+
+@media (max-width: 576px) {
+    .game-cover {
+        width: 160px;
+        height: 230px;
+    }
+
+    .game-details-header {
+        gap: 1rem;
+    }
+}

@@ -1,0 +1,8 @@
+.all-manga-cover {
+    height: 260px;
+    object-fit: cover;
+}
+
+.manga-progress-bar {
+    height: 6px;
+}

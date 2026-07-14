@@ -1,0 +1,57 @@
+@model List<object>
+@{
+    ViewData["Title"] = "Search Games";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/Style/games-search.css" />
+}
+
+<h2 class="mb-4">Search Games</h2>
+
+<form id="liveSearchForm" class="row g-2 mb-3" onsubmit="return false;">
+    <div class="col-auto flex-grow-1 position-relative">
+        <input type="text"
+               id="liveSearchInput"
+               class="form-control"
+               placeholder="Search by title..."
+               autocomplete="off" />
+        <span id="liveSearchSpinner"
+              class="spinner-border spinner-border-sm text-primary position-absolute games-search-spinner"></span>
+    </div>
+    <div class="col-auto">
+        <button type="submit" id="searchSubmitBtn" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+<div class="row g-2 mb-4" id="filterBar">
+    <div class="col-auto">
+        <select id="genreFilter" class="form-select">
+            <option value="0">All Genres</option>
+        </select>
+    </div>
+</div>
+
+<div id="searchResultsContainer"></div>
+
+<div class="d-flex justify-content-between align-items-center mb-3" id="browseHeading">
+    <h4>Browse Games <span class="badge bg-secondary">Live from IGDB</span></h4>
+</div>
+
+<div class="row g-3" id="discoverGrid"></div>
+
+<div class="text-center my-4">
+    <button type="button" id="loadMoreBtn" class="btn btn-outline-primary">Load More</button>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Top Rated Games <span class="badge bg-secondary">Live from IGDB</span></h4>
+</div>
+
+<div class="trending-scroll mb-5" id="topRatedGamesRow">
+    <div class="trending-placeholder">Loading top rated games...</div>
+</div>
+
+@section Scripts {
+    <script src="~/Assets/JavaScript/games-search.js"></script>
+}

@@ -1,0 +1,70 @@
+@model List<object>
+@{
+    ViewData["Title"] = "Search Manga";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/Assets/Style/manga-search-live.css" />
+}
+
+<h2 class="mb-4">Search Manga, Manhwa & Manhua</h2>
+
+<form id="liveSearchForm" class="row g-2 mb-3" onsubmit="return false;">
+    <div class="col-auto flex-grow-1 position-relative">
+        <input type="text"
+               id="liveSearchInput"
+               class="form-control"
+               placeholder="Search by title..."
+               autocomplete="off" />
+        <span id="liveSearchSpinner"
+              class="spinner-border spinner-border-sm text-primary position-absolute live-search-spinner"></span>
+    </div>
+    <div class="col-auto">
+        <button type="submit" id="searchSubmitBtn" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+<div class="row g-2 mb-4" id="filterBar">
+    <div class="col-auto">
+        <select id="typeFilter" class="form-select">
+            <option value="manga" selected>Manga</option>
+            <option value="manhwa">Manhwa</option>
+            <option value="manhua">Manhua</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select id="genreFilter" class="form-select">
+            <option value="">All Genres</option>
+        </select>
+    </div>
+</div>
+
+<div id="searchResultsContainer"></div>
+
+<div class="d-flex justify-content-between align-items-center mb-3" id="browseHeading">
+    <h4>Browse Manga <span class="badge bg-secondary">Live from AniList</span></h4>
+</div>
+
+<div class="row g-3" id="discoverGrid"></div>
+
+<div class="text-center my-4">
+    <button type="button" id="loadMoreBtn" class="btn btn-outline-primary">Load More</button>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Top Rated Manga <span class="badge bg-secondary">Live from AniList</span></h4>
+</div>
+<div class="trending-scroll mb-5" id="topRatedMangaRow">
+    <div class="trending-placeholder">Loading top rated manga...</div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Top Rated Manhwa <span class="badge bg-secondary">Live from AniList</span></h4>
+</div>
+<div class="trending-scroll mb-5" id="topRatedManhwaRow">
+    <div class="trending-placeholder">Loading top rated manhwa...</div>
+</div>
+
+@section Scripts {
+    <script src="~/Assets/JavaScript/manga-search-live.js"></script>
+}
