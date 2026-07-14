@@ -5,6 +5,7 @@
         .GroupBy(e => e.SeasonNumber)
         .OrderBy(g => g.Key)
         .ToList();
+    var today = DateTime.UtcNow.Date;
 }
 
 <div class="row mb-4">
@@ -15,10 +16,6 @@
     <div class="col-md-9">
         <h2>@Model.Title</h2>
         <div class="mb-2">
-            @if (Model.Followed)
-            {
-                <span class="badge bg-success">Following</span>
-            }
             @if (Model.Archived)
             {
                 <span class="badge bg-secondary">Archived</span>
@@ -41,11 +38,11 @@
     <div class="episodes-panel-header">
         <span>All episodes</span>
         <form asp-controller="Show" asp-action="MarkAllWatched" method="post"
-              onsubmit="return confirm('Mark ALL episodes in this show as watched?');" class="d-inline">
+              data-confirm="Mark all RELEASED episodes in this show as watched?" class="d-inline">
             <input type="hidden" name="showId" value="@Model.Id" />
             <button type="submit"
                     class="check-btn @(Model.Episodes.Any() && Model.Episodes.All(e => e.Watched) ? "check-btn-active" : "")"
-                    title="Mark entire show watched">
+                    title="Mark all released episodes watched">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M5 13l4 4L19 7" />
                 </svg>
@@ -72,13 +69,13 @@
                 <div class="season-right">
                     <span class="season-count">@watchedCount/@totalCount</span>
                     <form asp-controller="Show" asp-action="MarkSeasonWatched" method="post"
-                          onsubmit="event.stopPropagation(); return confirm('Mark all of @label as watched?');"
+                          data-confirm="Mark all RELEASED episodes of @label as watched?"
                           class="d-inline" onclick="event.stopPropagation()">
                         <input type="hidden" name="showId" value="@Model.Id" />
                         <input type="hidden" name="seasonNumber" value="@season.Key" />
                         <button type="submit"
                                 class="check-btn @(allWatched ? "check-btn-active" : "")"
-                                title="Mark season watched">
+                                title="Mark season's released episodes watched">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                 <path d="M5 13l4 4L19 7" />
                             </svg>
@@ -91,11 +88,33 @@
                 <ul class="episode-list">
                     @foreach (var ep in episodes)
                     {
+                        var isReleased = ep.AirDate.HasValue && ep.AirDate.Value.Date <= today;
+                        var daysRemaining = ep.AirDate.HasValue ? (ep.AirDate.Value.Date - today).Days : (int?)null;
+
                         <li class="episode-row">
-                            <span class="episode-name">E@(ep.EpisodeNumber.ToString("00")) — @ep.Name</span>
+                            <span class="episode-name">
+                                E@(ep.EpisodeNumber.ToString("00")) — @ep.Name
+                                @if (!isReleased)
+                                {
+                                    if (ep.AirDate.HasValue && daysRemaining.HasValue && daysRemaining.Value > 0)
+                                    {
+                                        <span class="release-badge">Releases in @daysRemaining.Value day@(daysRemaining.Value == 1 ? "" : "s")</span>
+                                    }
+                                    else if (ep.AirDate.HasValue && daysRemaining == 0)
+                                    {
+                                        <span class="release-badge release-today">Releases today</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="release-badge release-tba">Release date TBA</span>
+                                    }
+                                }
+                            </span>
                             <form asp-controller="Show" asp-action="ToggleWatched" method="post" class="d-inline">
                                 <input type="hidden" name="episodeId" value="@ep.Id" />
-                                <button type="submit" class="check-btn check-btn-sm @(ep.Watched ? "check-btn-active" : "")">
+                                <button type="submit"
+                                        class="check-btn check-btn-sm @(ep.Watched ? "check-btn-active" : "") @(!isReleased ? "check-btn-disabled" : "")"
+                                        @(!isReleased ? "disabled title=\"Not released yet\"" : "")>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                         <path d="M5 13l4 4L19 7" />
                                     </svg>
@@ -206,6 +225,17 @@
         height: 28px;
     }
 
+    .check-btn-disabled {
+        background: #2a2a2a !important;
+        color: #555 !important;
+        cursor: not-allowed !important;
+        opacity: 0.6;
+    }
+
+    .check-btn-disabled:hover {
+        background: #2a2a2a !important;
+    }
+
     .episode-list {
         list-style: none;
         margin: 0;
@@ -219,10 +249,38 @@
         align-items: center;
         padding: 12px 20px 12px 40px;
         border-bottom: 1px solid #1c1c1c;
+        gap: 12px;
     }
 
     .episode-name {
         color: #ccc;
         font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .release-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 12px;
+        background: #2a2210;
+        color: #d4af37;
+        border: 1px solid #d4af37;
+        white-space: nowrap;
+    }
+
+    .release-today {
+        background: #123a1e;
+        color: #2ecc71;
+        border-color: #2ecc71;
+    }
+
+    .release-tba {
+        background: #2a2a2a;
+        color: #888;
+        border-color: #555;
     }
 </style>

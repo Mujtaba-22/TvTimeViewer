@@ -13,6 +13,10 @@ builder.Services.AddScoped<DeduplicationService>();
 builder.Services.AddScoped<PosterEnrichmentService>();
 builder.Services.AddScoped<GenreEnrichmentService>();
 builder.Services.AddSingleton<ProgressTrackingService>();
+builder.Services.AddHostedService<ShowUpdateService>();
+builder.Services.AddHostedService<MangaUpdateService>();
+builder.Services.AddScoped<MangaDexService>();
+builder.Services.AddHttpClient<TmdbService>();
 
 builder.Services.AddHttpClient("tmdb", client =>
 {

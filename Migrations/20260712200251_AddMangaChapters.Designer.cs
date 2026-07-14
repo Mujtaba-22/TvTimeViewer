@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TvTimeViewer.Data;
 
@@ -11,9 +12,11 @@ using TvTimeViewer.Data;
 namespace TvTimeViewer.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260712200251_AddMangaChapters")]
+    partial class AddMangaChapters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,9 +104,6 @@ namespace TvTimeViewer.Migrations
                     b.Property<DateTime?>("LastReadAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("MangaDexId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -123,9 +123,6 @@ namespace TvTimeViewer.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<int>("ChapterNumber")
                         .HasColumnType("int");
@@ -155,9 +152,6 @@ namespace TvTimeViewer.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Genre")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImdbId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PosterContentType")
@@ -199,9 +193,6 @@ namespace TvTimeViewer.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Genre")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImdbId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("LastWatchedAt")

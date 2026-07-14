@@ -13,8 +13,10 @@ public class LibraryViewModel
 {
     public List<Show> Shows { get; set; } = new();
     public List<Show> WatchedShows { get; set; } = new();
+    public List<Show> CurrentlyWatching { get; set; } = new();
     public List<Movie> Movies { get; set; } = new();
     public List<Movie> WatchedMovies { get; set; } = new();
+    public List<Manga> MangaList { get; set; } = new();
 }
 
 public class LibraryController : Controller
@@ -45,6 +47,7 @@ public class LibraryController : Controller
             .ToListAsync();
 
         var movies = await _db.Movies.OrderBy(m => m.Title).ToListAsync();
+        var manga = await _db.Manga.OrderBy(m => m.Title).ToListAsync();
 
         var vm = new LibraryViewModel
         {
@@ -52,23 +55,27 @@ public class LibraryController : Controller
             WatchedShows = showsWithEpisodes
                 .Where(s => s.Episodes.Any() && s.Episodes.All(e => e.Watched))
                 .ToList(),
+            CurrentlyWatching = showsWithEpisodes
+                .Where(s => s.Episodes.Any(e => e.Watched) && s.Episodes.Any(e => !e.Watched))
+                .OrderByDescending(s => s.LastWatchedAt)
+                .ToList(),
             Movies = movies,
-            WatchedMovies = movies.Where(m => m.Watched).ToList()
+            WatchedMovies = movies.Where(m => m.Watched).ToList(),
+            MangaList = manga
         };
         return View(vm);
     }
 
-    public async Task<IActionResult> AllShows(string? q, string? filter, string? genre, int page = 1)
+    public async Task<IActionResult> AllShows(string? q, string? filter, string? genre, string? watchStatus, int page = 1)
     {
         const int pageSize = 24;
-        var query = _db.Shows.AsQueryable();
+        var query = _db.Shows.Include(s => s.Episodes).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
             query = query.Where(s => s.Title.Contains(q));
 
         query = filter switch
         {
-            "following" => query.Where(s => s.Followed),
             "archived" => query.Where(s => s.Archived),
             "no-poster" => query.Where(s => s.PosterImage == null),
             _ => query
@@ -77,14 +84,25 @@ public class LibraryController : Controller
         if (!string.IsNullOrWhiteSpace(genre))
             query = query.Where(s => s.Genre != null && s.Genre.Contains(genre));
 
-        var totalShows = await query.CountAsync();
-        var shows = await query.OrderBy(s => s.Title).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var allMatching = await query.OrderBy(s => s.Title).ToListAsync();
+
+        allMatching = watchStatus switch
+        {
+            "watched" => allMatching.Where(s => s.Episodes.Any() && s.Episodes.All(e => e.Watched)).ToList(),
+            "not-watched" => allMatching.Where(s => !s.Episodes.Any(e => e.Watched)).ToList(),
+            "continue" => allMatching.Where(s => s.Episodes.Any(e => e.Watched) && s.Episodes.Any(e => !e.Watched)).ToList(),
+            _ => allMatching
+        };
+
+        var totalShows = allMatching.Count;
+        var shows = allMatching.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
         ViewBag.CurrentPage = page;
         ViewBag.TotalPages = (int)Math.Ceiling(totalShows / (double)pageSize);
         ViewBag.Query = q;
         ViewBag.Filter = filter;
         ViewBag.Genre = genre;
+        ViewBag.WatchStatus = watchStatus;
         ViewBag.TotalResults = totalShows;
         ViewBag.AllGenres = await _genres.GetDistinctShowGenresAsync();
 
@@ -270,7 +288,6 @@ public class LibraryController : Controller
                             {
                                 TvShowId = tvShowId,
                                 Title = title,
-                                Followed = TryGet(csv, "active") == "1",
                                 Archived = TryGet(csv, "archived") == "1"
                             });
                             showCount++;
@@ -385,22 +402,19 @@ public class LibraryController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> ToggleFollowed(int id)
+    public async Task<IActionResult> DeleteShow(int id, string? returnUrl = null)
     {
-        var show = await _db.Shows.FindAsync(id);
+        var show = await _db.Shows.Include(s => s.Episodes).FirstOrDefaultAsync(s => s.Id == id);
         if (show != null)
         {
-            show.Followed = !show.Followed;
+            if (show.Episodes.Any()) _db.Episodes.RemoveRange(show.Episodes);
+            _db.Shows.Remove(show);
             await _db.SaveChangesAsync();
         }
-        return RedirectToAction("Index");
-    }
 
-    [HttpPost]
-    public async Task<IActionResult> DeleteShow(int id)
-    {
-        var show = await _db.Shows.FindAsync(id);
-        if (show != null) { _db.Shows.Remove(show); await _db.SaveChangesAsync(); }
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+
         return RedirectToAction("Index");
     }
 

@@ -7,6 +7,45 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('submit', function (e) {
+            const form = e.target.closest('form[data-confirm]');
+            if (!form) return;
+
+            e.preventDefault();
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: form.dataset.confirm,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, do it',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#2ecc71',
+                cancelButtonColor: '#888'
+            }).then(function (result) {
+                if (!result.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Processing...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const formData = new FormData(form);
+                fetch(form.action, { method: 'POST', body: formData, cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('Request failed.');
+                        window.location.reload(true);
+                    })
+                    .catch(function () {
+                        Swal.fire({ icon: 'error', title: 'Something went wrong', text: 'Please try again.' });
+                    });
+            });
+        });
+    </script>
 </head>
 <body>
     <header>

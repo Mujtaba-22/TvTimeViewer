@@ -3,6 +3,7 @@ namespace TvTimeViewer.Models;
 public class Show
 {
     public int Id { get; set; }
+    public string? ImdbId { get; set; }
     public int? TvShowId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Genre { get; set; }

@@ -4,17 +4,34 @@
     int initialCount = 12;
 }
 
-<h2 class="mb-4">My TV Library</h2>
+<h2 class="mb-3">My TV Library</h2>
 
 @if (TempData["Message"] != null)
 {
     <div class="alert alert-success">@TempData["Message"]</div>
 }
 
+<div class="library-quickbar mb-4">
+    <div class="quickbar-search">
+        <input type="text" id="librarySearch" class="form-control" placeholder="🔍 Search your library (shows, movies, manga)..." autocomplete="off" />
+        <span class="quickbar-count text-muted small" id="searchResultCount"></span>
+    </div>
+    <nav class="quickbar-jump" aria-label="Jump to section">
+        <a href="#section-watching">Watching</a>
+        <a href="#section-shows">Shows</a>
+        <a href="#section-watched-shows">Watched Shows</a>
+        <a href="#section-movies">Movies</a>
+        <a href="#section-watched-movies">Watched Movies</a>
+        <a href="#section-manga">Manga</a>
+    </nav>
+</div>
+
+<div id="updatesNotificationBar"></div>
+
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="card-title">Import GDPR ZIP</h5>
-        <form id="importForm" class="row g-2 align-items-center mb-3">
+        <form id="importForm" class="row g-2 align-items-center">
             <div class="col-auto">
                 <input type="file" id="zipFile" name="zipFile" accept=".zip" class="form-control" required />
             </div>
@@ -22,12 +39,7 @@
                 <button type="submit" class="btn btn-primary">Import</button>
             </div>
         </form>
-
-        <div class="d-flex gap-2">
-            <button type="button" id="btnCleanDuplicates" class="btn btn-outline-warning btn-sm">Remove Duplicate Titles</button>
-            <button type="button" id="btnRefreshPosters" class="btn btn-outline-info btn-sm">Fetch All Posters</button>
-            <button type="button" id="btnRefreshGenres" class="btn btn-outline-primary btn-sm">Fetch All Genres</button>
-        </div>
+        <p class="text-muted small mt-2 mb-0">Duplicate cleanup, posters, and genres are fetched automatically after import.</p>
     </div>
 </div>
 
@@ -47,17 +59,47 @@
     <div class="trending-placeholder">Loading top movies...</div>
 </div>
 
+<div id="section-watching"></div>
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4>Show Updates <span class="badge bg-secondary">New Episodes & Seasons</span></h4>
-    <button type="button" id="btnCheckUpdates" class="btn btn-outline-info btn-sm">Check for Updates</button>
+    <h4>Currently Watching <span class="badge bg-secondary">@Model.CurrentlyWatching.Count</span></h4>
 </div>
 
-<div class="row g-3 mb-5" id="showUpdatesRow">
-    <div class="col-12">
-        <p class="text-muted">Click "Check for Updates" to scan your followed shows for new episodes and seasons via TVmaze.</p>
-    </div>
+<div class="row g-3 mb-5 library-section" id="currentlyWatchingGrid" data-empty-text="No matches in Currently Watching">
+    @if (!Model.CurrentlyWatching.Any())
+    {
+        <div class="col-12 no-results-placeholder">
+            <p class="text-muted">Nothing in progress — shows with some watched and some unwatched episodes will show up here.</p>
+        </div>
+    }
+    @foreach (var show in Model.CurrentlyWatching)
+    {
+        var watchedCount = show.Episodes.Count(e => e.Watched);
+        var totalCount = show.Episodes.Count;
+        var percent = totalCount > 0 ? (int)((double)watchedCount / totalCount * 100) : 0;
+
+        <div class="col-6 col-md-3 col-lg-2 library-card" data-title="@show.Title.ToLower()">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id">
+                    <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
+                         class="card-img-top" alt="@show.Title" style="height:220px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@show.Title</p>
+                    @if (!string.IsNullOrEmpty(show.Genre))
+                    {
+                        <span class="badge bg-light text-dark border mb-1">@show.Genre.Split(',')[0]</span>
+                    }
+                    <div class="progress mb-1" style="height:6px;">
+                        <div class="progress-bar bg-primary" style="width:@percent%"></div>
+                    </div>
+                    <span class="text-muted small">@watchedCount / @totalCount episodes</span>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
+<div id="section-shows"></div>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>Shows <span class="badge bg-secondary">@Model.Shows.Count</span></h4>
     <div>
@@ -66,11 +108,15 @@
     </div>
 </div>
 
-<div class="row g-3 mb-3" id="showsGrid">
+<div class="row g-3 mb-3 library-section" id="showsGrid" data-empty-text="No matching shows">
     @for (int i = 0; i < Model.Shows.Count; i++)
     {
         var show = Model.Shows[i];
-        <div class="col-6 col-md-3 col-lg-2 show-card @(i >= initialCount ? "d-none" : "")">
+        var showWatchedCount = show.Episodes.Count(e => e.Watched);
+        var showTotalCount = show.Episodes.Count;
+        var showFullyWatched = showTotalCount > 0 && showWatchedCount == showTotalCount;
+
+        <div class="col-6 col-md-3 col-lg-2 show-card library-card @(i >= initialCount ? "d-none" : "")" data-title="@show.Title.ToLower()">
             <div class="card h-100 shadow-sm">
                 <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id">
                     <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
@@ -82,23 +128,23 @@
                     {
                         <span class="badge bg-light text-dark border">@show.Genre.Split(',')[0]</span>
                     }
-                    @if (show.Followed)
-                    {
-                        <span class="badge bg-success">Following</span>
-                    }
                     @if (show.Archived)
                     {
                         <span class="badge bg-secondary">Archived</span>
                     }
                 </div>
-                <div class="card-footer p-2 bg-white border-0 d-flex gap-1">
-                    <form asp-controller="Library" asp-action="ToggleFollowed" asp-route-id="@show.Id" method="post" class="flex-grow-1">
-                        <button type="submit" class="btn btn-sm w-100 @(show.Followed ? "btn-success" : "btn-outline-secondary")">
-                            @(show.Followed ? "✓ Following" : "Mark Followed")
-                        </button>
-                    </form>
-                    <form asp-controller="Library" asp-action="DeleteShow" asp-route-id="@show.Id" method="post" onsubmit="return confirm('Remove this show?');">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
+                <div class="card-footer p-2 bg-white border-0 d-flex flex-column gap-1">
+                    @if (!showFullyWatched)
+                    {
+                        <form asp-controller="Show" asp-action="MarkAllWatched" method="post"
+                              data-confirm="Mark all released episodes of @show.Title as watched?">
+                            <input type="hidden" name="showId" value="@show.Id" />
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                            <button type="submit" class="btn btn-outline-success btn-sm w-100">✓ Mark Watched</button>
+                        </form>
+                    }
+                    <form asp-controller="Library" asp-action="DeleteShow" asp-route-id="@show.Id" method="post" data-confirm="Remove this show?">
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">✕ Remove</button>
                     </form>
                 </div>
             </div>
@@ -114,16 +160,17 @@
 }
 else { <div class="mb-5"></div> }
 
+<div id="section-watched-shows"></div>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>Watched Series <span class="badge bg-secondary">@Model.WatchedShows.Count</span></h4>
     <a asp-controller="Library" asp-action="AllWatchedShows" class="btn btn-outline-dark btn-sm">View All Watched Series</a>
 </div>
 
-<div class="row g-3 mb-3" id="watchedShowsGrid">
+<div class="row g-3 mb-3 library-section" id="watchedShowsGrid" data-empty-text="No matching watched series">
     @for (int i = 0; i < Model.WatchedShows.Count; i++)
     {
         var show = Model.WatchedShows[i];
-        <div class="col-6 col-md-3 col-lg-2 watched-show-card @(i >= initialCount ? "d-none" : "")">
+        <div class="col-6 col-md-3 col-lg-2 watched-show-card library-card @(i >= initialCount ? "d-none" : "")" data-title="@show.Title.ToLower()">
             <div class="card h-100 shadow-sm">
                 <a asp-controller="Show" asp-action="Details" asp-route-id="@show.Id">
                     <img src="@(show.PosterImage != null ? Url.Action("Show", "Poster", new { id = show.Id }) : "/images/placeholder.png")"
@@ -154,16 +201,17 @@ else if (!Model.WatchedShows.Any())
 }
 else { <div class="mb-5"></div> }
 
+<div id="section-watched-movies"></div>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>Watched Movies <span class="badge bg-secondary">@Model.WatchedMovies.Count</span></h4>
     <a asp-controller="Library" asp-action="AllWatchedMovies" class="btn btn-outline-dark btn-sm">View All Watched Movies</a>
 </div>
 
-<div class="row g-3 mb-3" id="watchedMoviesGrid">
+<div class="row g-3 mb-3 library-section" id="watchedMoviesGrid" data-empty-text="No matching watched movies">
     @for (int i = 0; i < Model.WatchedMovies.Count; i++)
     {
         var movie = Model.WatchedMovies[i];
-        <div class="col-6 col-md-3 col-lg-2 watched-movie-card @(i >= initialCount ? "d-none" : "")">
+        <div class="col-6 col-md-3 col-lg-2 watched-movie-card library-card @(i >= initialCount ? "d-none" : "")" data-title="@movie.Title.ToLower()">
             <div class="card h-100 shadow-sm">
                 <a asp-controller="Movie" asp-action="Details" asp-route-id="@movie.Id">
                     <img src="@(movie.PosterImage != null ? Url.Action("Movie", "Poster", new { id = movie.Id }) : "/images/placeholder.png")"
@@ -197,16 +245,17 @@ else if (!Model.WatchedMovies.Any())
 }
 else { <div class="mb-5"></div> }
 
+<div id="section-movies"></div>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>Movies <span class="badge bg-secondary">@Model.Movies.Count</span></h4>
     <a asp-controller="Library" asp-action="AllMovies" class="btn btn-outline-dark btn-sm">View All Movies</a>
 </div>
 
-<div class="row g-3 mb-3" id="moviesGrid">
+<div class="row g-3 mb-3 library-section" id="moviesGrid" data-empty-text="No matching movies">
     @for (int i = 0; i < Model.Movies.Count; i++)
     {
         var movie = Model.Movies[i];
-        <div class="col-6 col-md-3 col-lg-2 movie-card @(i >= initialCount ? "d-none" : "")">
+        <div class="col-6 col-md-3 col-lg-2 movie-card library-card @(i >= initialCount ? "d-none" : "")" data-title="@movie.Title.ToLower()">
             <div class="card h-100 shadow-sm">
                 <a asp-controller="Movie" asp-action="Details" asp-route-id="@movie.Id">
                     <img src="@(movie.PosterImage != null ? Url.Action("Movie", "Poster", new { id = movie.Id }) : "/images/placeholder.png")"
@@ -230,7 +279,7 @@ else { <div class="mb-5"></div> }
                             @(movie.Watched ? "✓ Watched" : "Mark Watched")
                         </button>
                     </form>
-                    <form asp-controller="Library" asp-action="DeleteMovie" asp-route-id="@movie.Id" method="post" onsubmit="return confirm('Remove this movie?');">
+                    <form asp-controller="Library" asp-action="DeleteMovie" asp-route-id="@movie.Id" method="post" data-confirm="Remove this movie?">
                         <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
                     </form>
                 </div>
@@ -245,6 +294,185 @@ else { <div class="mb-5"></div> }
         <button type="button" class="btn btn-outline-secondary" id="showMoreMovies">Show More Movies (@(Model.Movies.Count - initialCount) remaining)</button>
     </div>
 }
+else { <div class="mb-5"></div> }
+
+<div id="section-manga"></div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>My Manga, Manhwa & Manhua <span class="badge bg-secondary">@Model.MangaList.Count</span></h4>
+    <a asp-controller="Manga" asp-action="Index" class="btn btn-outline-primary btn-sm">+ Browse Manga & Manhwa</a>
+</div>
+
+<div class="row g-3 mb-5 library-section" id="mangaGrid" data-empty-text="No matching manga titles">
+    @if (!Model.MangaList.Any())
+    {
+        <div class="col-12 no-results-placeholder">
+            <p class="text-muted">No manga, manhwa, or manhua added yet — browse and add titles from the Manga page.</p>
+        </div>
+    }
+    @for (int i = 0; i < Model.MangaList.Count; i++)
+    {
+        var manga = Model.MangaList[i];
+        var readCount = manga.ChaptersRead;
+        var totalCount = manga.TotalChapters;
+        var percent = totalCount.HasValue && totalCount.Value > 0
+            ? (int)((double)readCount / totalCount.Value * 100)
+            : 0;
+
+        <div class="col-6 col-md-3 col-lg-2 manga-card library-card @(i >= initialCount ? "d-none" : "")" data-title="@manga.Title.ToLower()">
+            <div class="card h-100 shadow-sm">
+                <a asp-controller="Manga" asp-action="Details" asp-route-id="@manga.Id">
+                    <img src="@(manga.CoverImage != null ? Url.Action("Cover", "Manga", new { id = manga.Id }) : (manga.CoverUrl ?? "/images/placeholder.png"))"
+                         class="card-img-top" alt="@manga.Title" style="height:260px; object-fit:cover;" />
+                </a>
+                <div class="card-body p-2">
+                    <p class="card-text small fw-semibold mb-1">@manga.Title</p>
+                    <span class="badge bg-info text-dark mb-1">@manga.Format</span>
+                    @if (!string.IsNullOrEmpty(manga.Genre))
+                    {
+                        <span class="badge bg-light text-dark border mb-1">@manga.Genre.Split(',')[0]</span>
+                    }
+                    @if (manga.Completed)
+                    {
+                        <span class="badge bg-success">✓ Completed</span>
+                    }
+                    else if (totalCount.HasValue)
+                    {
+                        <div class="progress mb-1" style="height:6px;">
+                            <div class="progress-bar bg-primary" style="width:@percent%"></div>
+                        </div>
+                        <span class="text-muted small">Ch. @readCount / @totalCount</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">Ch. @readCount read</span>
+                    }
+                </div>
+                <div class="card-footer p-2 bg-white border-0">
+                    <form asp-controller="Manga" asp-action="Delete" asp-route-id="@manga.Id" method="post" data-confirm="Remove this title?">
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">✕ Remove</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.MangaList.Count > initialCount)
+{
+    <div class="text-center mb-5">
+        <button type="button" class="btn btn-outline-secondary" id="showMoreManga">Show More (@(Model.MangaList.Count - initialCount) remaining)</button>
+    </div>
+}
+
+<style>
+    .library-quickbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 10px 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .quickbar-search {
+        flex: 1 1 260px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .quickbar-search input {
+        flex: 1;
+    }
+
+    .quickbar-count {
+        white-space: nowrap;
+    }
+
+    .quickbar-jump {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .quickbar-jump a {
+        font-size: 0.8rem;
+        color: #d4af37;
+        text-decoration: none;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 4px 10px;
+        white-space: nowrap;
+    }
+
+    .quickbar-jump a:hover {
+        background: #d4af37;
+        color: #111;
+    }
+
+    .no-results-placeholder {
+        width: 100%;
+    }
+
+    .section-no-match {
+        display: none;
+    }
+
+    .updates-banner {
+        background: #12261b;
+        border: 1px solid #2e7d4f;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .updates-banner-title {
+        color: #7fd99f;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .updates-banner-list {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
+
+    .updates-banner-chip {
+        background: #1a3324;
+        border: 1px solid #2e7d4f;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 0.8rem;
+        color: #d4f5df;
+        text-decoration: none;
+    }
+
+    .updates-banner-chip:hover {
+        background: #2e7d4f;
+        color: #fff;
+    }
+
+    .updates-banner-dismiss {
+        background: none;
+        border: none;
+        color: #7fd99f;
+        font-size: 1.1rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+</style>
 
 @section Scripts {
     <script>
@@ -336,46 +564,45 @@ else { <div class="mb-5"></div> }
             }
         });
 
-        async function checkShowUpdates(force) {
-            const row = document.getElementById('showUpdatesRow');
-            row.innerHTML = `<div class="col-12"><p class="text-muted">Checking your followed shows for new episodes...</p></div>`;
+        async function checkShowUpdatesAuto() {
+            const bar = document.getElementById('updatesNotificationBar');
+            const dismissedKey = 'updatesDismissedAt';
+            const lastDismissed = sessionStorage.getItem(dismissedKey);
 
             try {
-                const res = await fetch(`/Updates/Check?force=${force}`);
+                const res = await fetch('/Updates/Check?force=false');
                 const data = await res.json();
 
-                if (!data.updates || !data.updates.length) {
-                    row.innerHTML = `<div class="col-12"><div class="alert alert-success mb-0">You're all caught up — no new episodes or seasons found.</div></div>`;
-                    return;
-                }
+                if (!data.updates || !data.updates.length) return;
+                if (lastDismissed) return;
 
-                row.innerHTML = data.updates.map(u => `
-                    <div class="col-md-4">
-                        <div class="card h-100 shadow-sm">
-                            <div class="d-flex">
-                                <img src="${u.poster || '/images/placeholder.png'}" style="width:90px; height:135px; object-fit:cover;" alt="${u.title}" />
-                                <div class="card-body p-3">
-                                    <h6 class="card-title mb-1">${u.title}</h6>
-                                    ${u.isNewSeason
-                                        ? `<span class="badge bg-success mb-1">New Season ${u.latestSeason}!</span>`
-                                        : `<span class="badge bg-primary mb-1">${u.newEpisodeCount} new episode${u.newEpisodeCount > 1 ? 's' : ''}</span>`}
-                                    <p class="small text-muted mb-2">Latest: ${u.latestEpisodeTitle}</p>
-                                    <a href="/Show/Details/${u.showId}" class="btn btn-sm btn-outline-dark w-100">View Show</a>
-                                </div>
-                            </div>
+                const chips = data.updates.slice(0, 8).map(u => {
+                    const label = u.isNewSeason
+                        ? `${u.title} · New Season ${u.latestSeason}`
+                        : `${u.title} · ${u.newEpisodeCount} new ep${u.newEpisodeCount > 1 ? 's' : ''}`;
+                    return `<a href="/Show/Details/${u.showId}" class="updates-banner-chip">${label}</a>`;
+                }).join('');
+
+                bar.innerHTML = `
+                    <div class="updates-banner">
+                        <div>
+                            <p class="updates-banner-title">📺 ${data.updates.length} show${data.updates.length > 1 ? 's have' : ' has'} new episodes or seasons</p>
+                            <div class="updates-banner-list">${chips}</div>
                         </div>
+                        <button type="button" class="updates-banner-dismiss" id="dismissUpdatesBanner" title="Dismiss">✕</button>
                     </div>
-                `).join('');
+                `;
+
+                document.getElementById('dismissUpdatesBanner').addEventListener('click', function () {
+                    sessionStorage.setItem(dismissedKey, '1');
+                    bar.innerHTML = '';
+                });
             } catch (err) {
-                row.innerHTML = `<div class="col-12"><div class="alert alert-warning mb-0">Could not check for updates right now.</div></div>`;
+                // Silent failure — no banner shown if the background update check fails.
             }
         }
 
-        document.getElementById('btnCheckUpdates').addEventListener('click', function () {
-            checkShowUpdates(true);
-        });
-
-        checkShowUpdates(false);
+        checkShowUpdatesAuto();
 
         function setupShowMore(buttonId, cardClass) {
             const button = document.getElementById(buttonId);
@@ -392,26 +619,59 @@ else { <div class="mb-5"></div> }
         setupShowMore('showMoreWatchedShows', 'watched-show-card');
         setupShowMore('showMoreWatchedMovies', 'watched-movie-card');
         setupShowMore('showMoreMovies', 'movie-card');
+        setupShowMore('showMoreManga', 'manga-card');
 
-        function pollProgress(jobId, onDone) {
-            const interval = setInterval(async () => {
-                const res = await fetch('/Library/Progress?id=' + jobId);
-                if (!res.ok) { clearInterval(interval); return; }
-                const state = await res.json();
+        const searchInput = document.getElementById('librarySearch');
+        const resultCountEl = document.getElementById('searchResultCount');
+        const allSections = document.querySelectorAll('.library-section');
 
-                Swal.update({
-                    title: state.label,
-                    html: `<div class="progress" style="height:24px;">
-                             <div class="progress-bar bg-success" style="width:${state.percent}%">${state.percent}%</div>
-                           </div>`
+        function applyLibrarySearch() {
+            const term = searchInput.value.trim().toLowerCase();
+            let totalMatches = 0;
+            const isSearching = term.length > 0;
+
+            allSections.forEach(section => {
+                const cards = section.querySelectorAll('.library-card');
+                let sectionMatches = 0;
+
+                cards.forEach(card => {
+                    const title = card.dataset.title || '';
+                    const matches = !isSearching || title.includes(term);
+
+                    if (isSearching) {
+                        card.style.display = matches ? '' : 'none';
+                    } else {
+                        card.style.display = '';
+                    }
+
+                    if (matches) sectionMatches++;
                 });
 
-                if (state.completed) {
-                    clearInterval(interval);
-                    onDone(state.resultMessage);
+                totalMatches += sectionMatches;
+
+                const heading = section.previousElementSibling;
+                if (isSearching && sectionMatches === 0) {
+                    section.classList.add('section-no-match');
+                    if (heading && heading.tagName !== 'DIV') heading.classList.add('section-no-match');
+                } else {
+                    section.classList.remove('section-no-match');
+                    if (heading) heading.classList.remove('section-no-match');
                 }
-            }, 700);
+
+                const moreBtnWrapper = section.nextElementSibling;
+                if (moreBtnWrapper && moreBtnWrapper.querySelector('button[id^="showMore"]')) {
+                    moreBtnWrapper.style.display = isSearching ? 'none' : '';
+                }
+            });
+
+            resultCountEl.textContent = isSearching ? `${totalMatches} match${totalMatches === 1 ? '' : 'es'}` : '';
         }
+
+        let searchDebounce;
+        searchInput.addEventListener('input', function () {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(applyLibrarySearch, 120);
+        });
 
         function showProgressModal() {
             Swal.fire({
@@ -425,13 +685,33 @@ else { <div class="mb-5"></div> }
             });
         }
 
-        function finishWithSuccess(message) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Done!',
-                text: message,
-                confirmButtonText: 'OK'
-            }).then(() => location.reload());
+        function pollProgressPromise(jobId) {
+            return new Promise((resolve, reject) => {
+                const interval = setInterval(async () => {
+                    const res = await fetch('/Library/Progress?id=' + jobId);
+                    if (!res.ok) { clearInterval(interval); reject(new Error('Lost progress tracking.')); return; }
+                    const state = await res.json();
+
+                    Swal.update({
+                        title: state.label,
+                        html: `<div class="progress" style="height:24px;">
+                                 <div class="progress-bar bg-success" style="width:${state.percent}%">${state.percent}%</div>
+                               </div>`
+                    });
+
+                    if (state.completed) {
+                        clearInterval(interval);
+                        resolve(state.resultMessage);
+                    }
+                }, 700);
+            });
+        }
+
+        async function startAndAwait(url) {
+            const res = await fetch(url, { method: 'POST' });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            return pollProgressPromise(data.jobId);
         }
 
         document.getElementById('importForm').addEventListener('submit', async function (e) {
@@ -444,36 +724,25 @@ else { <div class="mb-5"></div> }
 
             showProgressModal();
 
-            const res = await fetch('/Library/StartImportZip', { method: 'POST', body: formData });
-            const data = await res.json();
+            try {
+                const importRes = await fetch('/Library/StartImportZip', { method: 'POST', body: formData });
+                const importData = await importRes.json();
+                if (importData.error) throw new Error(importData.error);
+                await pollProgressPromise(importData.jobId);
 
-            if (data.error) {
-                Swal.fire({ icon: 'error', title: 'Error', text: data.error });
-                return;
+                await startAndAwait('/Library/StartCleanDuplicates');
+                await startAndAwait('/Library/StartRefreshPosters');
+                await startAndAwait('/Library/StartRefreshGenres');
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'All done!',
+                    text: 'Your library was imported and fully enriched with posters and genres.',
+                    confirmButtonText: 'OK'
+                }).then(() => location.reload());
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Something went wrong during import.' });
             }
-
-            pollProgress(data.jobId, finishWithSuccess);
-        });
-
-        document.getElementById('btnRefreshPosters').addEventListener('click', async function () {
-            showProgressModal();
-            const res = await fetch('/Library/StartRefreshPosters', { method: 'POST' });
-            const data = await res.json();
-            pollProgress(data.jobId, finishWithSuccess);
-        });
-
-        document.getElementById('btnRefreshGenres').addEventListener('click', async function () {
-            showProgressModal();
-            const res = await fetch('/Library/StartRefreshGenres', { method: 'POST' });
-            const data = await res.json();
-            pollProgress(data.jobId, finishWithSuccess);
-        });
-
-        document.getElementById('btnCleanDuplicates').addEventListener('click', async function () {
-            showProgressModal();
-            const res = await fetch('/Library/StartCleanDuplicates', { method: 'POST' });
-            const data = await res.json();
-            pollProgress(data.jobId, finishWithSuccess);
         });
     </script>
 }

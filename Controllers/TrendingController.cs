@@ -108,6 +108,93 @@ public class TrendingController : Controller
         }
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Genres(string type)
+    {
+        var cacheKey = $"genres-{type}";
+        if (_cache.TryGetValue(cacheKey, out object? cached))
+            return Json(cached!);
+
+        var apiKey = _config["Tmdb:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return Json(new { error = "No TMDb API key configured." });
+
+        var mediaType = type == "movie" ? "movie" : "tv";
+        var client = _httpFactory.CreateClient("tmdb");
+
+        try
+        {
+            var json = await client.GetStringAsync(
+                $"https://api.themoviedb.org/3/genre/{mediaType}/list?api_key={apiKey}");
+            using var doc = JsonDocument.Parse(json);
+            var genres = doc.RootElement.GetProperty("genres")
+                .EnumerateArray()
+                .Select(g => new { id = g.GetProperty("id").GetInt32(), name = g.GetProperty("name").GetString() })
+                .ToList();
+
+            _cache.Set(cacheKey, genres, TimeSpan.FromHours(24));
+            return Json(genres);
+        }
+        catch (Exception ex)
+        {
+            return Json(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Discover(string type, int? genreId, int page = 1)
+    {
+        var apiKey = _config["Tmdb:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return Json(new { error = "No TMDb API key configured." });
+
+        var isMovie = type == "movie";
+        var mediaType = isMovie ? "movie" : "tv";
+        var client = _httpFactory.CreateClient("tmdb");
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+
+        try
+        {
+            var url = $"https://api.themoviedb.org/3/discover/{mediaType}?api_key={apiKey}&sort_by=popularity.desc&page={page}";
+            if (genreId.HasValue && genreId.Value > 0)
+                url += $"&with_genres={genreId.Value}";
+
+            var json = await client.GetStringAsync(url, cts.Token);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var results = root.GetProperty("results");
+            var totalPages = root.TryGetProperty("total_pages", out var tp) ? tp.GetInt32() : 1;
+
+            var items = new List<object>();
+            foreach (var item in results.EnumerateArray())
+            {
+                var posterPath = item.TryGetProperty("poster_path", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+                items.Add(new
+                {
+                    title = isMovie ? item.GetProperty("title").GetString() : item.GetProperty("name").GetString(),
+                    overview = item.TryGetProperty("overview", out var ov) ? ov.GetString() : null,
+                    rating = item.TryGetProperty("vote_average", out var v) ? v.GetDouble() : 0,
+                    poster = posterPath != null ? $"https://image.tmdb.org/t/p/w342{posterPath}" : null,
+                    releaseDate = isMovie
+                        ? (item.TryGetProperty("release_date", out var rd) ? rd.GetString() : null)
+                        : (item.TryGetProperty("first_air_date", out var fad) ? fad.GetString() : null),
+                    tmdbId = item.GetProperty("id").GetInt32(),
+                    isMovie
+                });
+            }
+
+            return Json(new { items, page, totalPages });
+        }
+        catch (OperationCanceledException)
+        {
+            return Json(new { error = "TMDb took too long to respond." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { error = ex.Message });
+        }
+    }
+
     [HttpPost]
     public async Task<IActionResult> AddShow(int tmdbId)
     {

@@ -9,4 +9,6 @@ public class AppDbContext : DbContext
     public DbSet<Show> Shows { get; set; }
     public DbSet<Movie> Movies { get; set; }
     public DbSet<Episode> Episodes { get; set; }
+    public DbSet<Manga> Manga { get; set; }
+    public DbSet<MangaChapter> MangaChapters { get; set; }
 }

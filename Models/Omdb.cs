@@ -31,4 +31,19 @@ public class OmdbDetail
     public string Actors { get; set; } = "";
     public string Director { get; set; } = "";
     public string Runtime { get; set; } = "";
+    public string totalSeasons { get; set; } = "";
+}
+public class OmdbSeasonResponse
+{
+    public string? Title { get; set; }
+    public string? Season { get; set; }
+    public List<OmdbEpisodeItem>? Episodes { get; set; }
+    public string? Response { get; set; }
+}
+
+public class OmdbEpisodeItem
+{
+    public string? Title { get; set; }
+    public string? Released { get; set; }
+    public string? Episode { get; set; }
 }

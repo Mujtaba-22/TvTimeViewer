@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TvTimeViewer.Data;
 
@@ -11,9 +12,11 @@ using TvTimeViewer.Data;
 namespace TvTimeViewer.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260712194659_AddMangaTable")]
+    partial class AddMangaTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,9 +104,6 @@ namespace TvTimeViewer.Migrations
                     b.Property<DateTime?>("LastReadAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("MangaDexId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -116,36 +116,6 @@ namespace TvTimeViewer.Migrations
                     b.ToTable("Manga");
                 });
 
-            modelBuilder.Entity("TvTimeViewer.Models.MangaChapter", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ChapterNumber")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MangaId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("Read")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("ReadAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MangaId");
-
-                    b.ToTable("MangaChapters");
-                });
-
             modelBuilder.Entity("TvTimeViewer.Models.Movie", b =>
                 {
                     b.Property<int>("Id")
@@ -155,9 +125,6 @@ namespace TvTimeViewer.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Genre")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImdbId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PosterContentType")
@@ -201,9 +168,6 @@ namespace TvTimeViewer.Migrations
                     b.Property<string>("Genre")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ImdbId")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("LastWatchedAt")
                         .HasColumnType("datetime2");
 
@@ -237,20 +201,6 @@ namespace TvTimeViewer.Migrations
                         .IsRequired();
 
                     b.Navigation("Show");
-                });
-
-            modelBuilder.Entity("TvTimeViewer.Models.MangaChapter", b =>
-                {
-                    b.HasOne("TvTimeViewer.Models.Manga", null)
-                        .WithMany("Chapters")
-                        .HasForeignKey("MangaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("TvTimeViewer.Models.Manga", b =>
-                {
-                    b.Navigation("Chapters");
                 });
 
             modelBuilder.Entity("TvTimeViewer.Models.Show", b =>
