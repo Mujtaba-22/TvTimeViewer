@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const discoverGrid = document.getElementById('discoverGrid');
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     const browseHeading = document.getElementById('browseHeading');
-    const filterBar = document.getElementById('filterBar');
 
     let currentController = null;
     let currentPage = 1;
@@ -23,6 +22,13 @@ document.addEventListener('DOMContentLoaded', function () {
         discoverGrid.style.display = show ? '' : 'none';
         loadMoreBtn.style.display = show ? '' : 'none';
         browseHeading.style.display = show ? '' : 'none';
+    }
+
+    function resetAddButton(btn) {
+        btn.disabled = false;
+        btn.textContent = '+ Add to List';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-primary');
     }
 
     function renderSearchResults(items, query) {
@@ -73,12 +79,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const res = await fetch(`/Search/SearchJson?q=${encodeURIComponent(query.trim())}`, {
-                signal: currentController.signal
+                signal: currentController.signal,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const data = await res.json();
             renderSearchResults(data, query.trim());
         } catch (err) {
             if (err.name !== 'AbortError') {
+                console.error('Live search error:', err);
                 resultsContainer.innerHTML = `<div class="alert alert-warning">Search failed. Try again.</div>`;
             }
         } finally {
@@ -93,7 +108,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function discoverCardHtml(item) {
         const poster = item.poster || '/images/placeholder.png';
-        const rating = item.rating ? item.rating.toFixed(1) : 'N/A';
+        const numericRating = item.rating != null && !isNaN(Number(item.rating))
+            ? Number(item.rating).toFixed(1)
+            : 'N/A';
         const year = item.releaseDate ? item.releaseDate.substring(0, 4) : '';
 
         return `
@@ -102,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <img src="${poster}" class="card-img-top" alt="${escapeHtml(item.title)}" />
                     <div class="card-body p-2">
                         <p class="card-text small fw-semibold mb-1" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</p>
-                        <span class="badge bg-light text-dark border mb-2">★ ${rating} ${year ? '· ' + year : ''}</span>
+                        <span class="badge bg-light text-dark border mb-2">★ ${numericRating} ${year ? '· ' + year : ''}</span>
                         <button type="button"
                                 class="btn btn-sm btn-outline-primary w-100 trending-add-btn"
                                 data-tmdb-id="${item.tmdbId}"
@@ -125,6 +142,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const res = await fetch(`/Trending/Discover?type=${type}&genreId=${genreId}&page=${currentPage}`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const data = await res.json();
 
             if (data.error) {
@@ -133,11 +155,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            totalPages = data.totalPages;
-            const html = data.items.map(discoverCardHtml).join('');
+            totalPages = data.totalPages || 1;
+            const html = (data.items || []).map(discoverCardHtml).join('');
             discoverGrid.innerHTML = reset ? html : discoverGrid.innerHTML + html;
             loadMoreBtn.style.display = currentPage < totalPages ? '' : 'none';
         } catch (err) {
+            console.error('Discover load error:', err);
             discoverGrid.innerHTML = `<div class="alert alert-warning">Could not load results.</div>`;
         }
     }
@@ -147,11 +170,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const res = await fetch(`/Trending/Genres?type=${type}`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const genres = await res.json();
 
-            genreFilter.innerHTML = '<option value="0">All Genres</option>' +
+            genreFilter.innerHTML =
+                '<option value="0">All Genres</option>' +
                 genres.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
         } catch (err) {
+            console.error('Genre load error:', err);
             genreFilter.innerHTML = '<option value="0">All Genres</option>';
         }
     }
@@ -187,6 +217,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const res = await fetch(`${endpoint}?tmdbId=${tmdbId}`, { method: 'POST' });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const data = await res.json();
 
             if (data.success) {
@@ -194,13 +229,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.classList.remove('btn-outline-primary');
                 btn.classList.add('btn-success');
             } else {
-                btn.disabled = false;
-                btn.textContent = '+ Add to List';
-                alert(data.message);
+                resetAddButton(btn);
+                alert(data.message || 'Could not add this title.');
             }
         } catch (err) {
-            btn.disabled = false;
-            btn.textContent = '+ Add to List';
+            console.error('Add to list error:', err);
+            resetAddButton(btn);
             alert('Could not add this title.');
         }
     });
@@ -213,10 +247,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const res = await fetch('/Trending/TopRated', { signal: controller.signal });
             clearTimeout(timeoutId);
 
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const data = await res.json();
 
             if (data.error) {
-                document.getElementById('topRatedShowsRow').innerHTML = `<div class="alert alert-warning mb-0">Top Rated unavailable: ${data.error}</div>`;
+                document.getElementById('topRatedShowsRow').innerHTML =
+                    `<div class="alert alert-warning mb-0">Top Rated unavailable: ${data.error}</div>`;
                 document.getElementById('topRatedMoviesRow').innerHTML = '';
                 return;
             }
@@ -226,7 +265,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (err) {
             clearTimeout(timeoutId);
             const message = err.name === 'AbortError' ? 'Request timed out.' : 'Could not reach TMDb.';
-            document.getElementById('topRatedShowsRow').innerHTML = `<div class="alert alert-warning mb-0">${message}</div>`;
+            document.getElementById('topRatedShowsRow').innerHTML =
+                `<div class="alert alert-warning mb-0">${message}</div>`;
             document.getElementById('topRatedMoviesRow').innerHTML = '';
         }
     }

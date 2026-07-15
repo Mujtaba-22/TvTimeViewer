@@ -14,44 +14,57 @@ public class TmdbService
         _apiKey = config["Tmdb:ApiKey"] ?? "";
     }
 
-    public async Task<List<OmdbSearchItem>> SearchAsync(string query)
+    public async Task<List<OmdbSearchItem>> SearchAsync(string query, string type = "all")
     {
         var results = new List<OmdbSearchItem>();
-        if (string.IsNullOrEmpty(_apiKey)) return results;
+        if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrWhiteSpace(query))
+            return results;
 
         try
         {
-            var tvUrl = $"https://api.themoviedb.org/3/search/tv?api_key={_apiKey}&query={Uri.EscapeDataString(query)}";
-            var tvResponse = await _http.GetFromJsonAsync<TmdbSearchResponse<TmdbTvSearchResult>>(tvUrl);
-            if (tvResponse?.Results != null)
+            if (type == "all" || type == "tv")
             {
-                foreach (var tv in tvResponse.Results.Take(10))
+                var tvUrl = $"https://api.themoviedb.org/3/search/tv?api_key={_apiKey}&query={Uri.EscapeDataString(query)}";
+                var tvResponse = await _http.GetFromJsonAsync<TmdbSearchResponse<TmdbTvSearchResult>>(tvUrl);
+
+                if (tvResponse?.Results != null)
                 {
-                    results.Add(new OmdbSearchItem
+                    foreach (var tv in tvResponse.Results.Take(10))
                     {
-                        Title = tv.Name ?? tv.Original_Name ?? "Untitled",
-                        Year = tv.First_Air_Date?.Length >= 4 ? tv.First_Air_Date[..4] : "",
-                        imdbID = $"tmdb-{tv.Id}",
-                        Type = "series",
-                        Poster = string.IsNullOrEmpty(tv.Poster_Path) ? "N/A" : $"https://image.tmdb.org/t/p/w342{tv.Poster_Path}"
-                    });
+                        results.Add(new OmdbSearchItem
+                        {
+                            Title = tv.Name ?? tv.Original_Name ?? "Untitled",
+                            Year = tv.First_Air_Date?.Length >= 4 ? tv.First_Air_Date[..4] : "",
+                            imdbID = $"tmdb-{tv.Id}",
+                            Type = "series",
+                            Poster = string.IsNullOrEmpty(tv.Poster_Path)
+                                ? "N/A"
+                                : $"https://image.tmdb.org/t/p/w342{tv.Poster_Path}"
+                        });
+                    }
                 }
             }
 
-            var movieUrl = $"https://api.themoviedb.org/3/search/movie?api_key={_apiKey}&query={Uri.EscapeDataString(query)}";
-            var movieResponse = await _http.GetFromJsonAsync<TmdbSearchResponse<TmdbMovieSearchResult>>(movieUrl);
-            if (movieResponse?.Results != null)
+            if (type == "all" || type == "movie")
             {
-                foreach (var movie in movieResponse.Results.Take(10))
+                var movieUrl = $"https://api.themoviedb.org/3/search/movie?api_key={_apiKey}&query={Uri.EscapeDataString(query)}";
+                var movieResponse = await _http.GetFromJsonAsync<TmdbSearchResponse<TmdbMovieSearchResult>>(movieUrl);
+
+                if (movieResponse?.Results != null)
                 {
-                    results.Add(new OmdbSearchItem
+                    foreach (var movie in movieResponse.Results.Take(10))
                     {
-                        Title = movie.Title ?? movie.Original_Title ?? "Untitled",
-                        Year = movie.Release_Date?.Length >= 4 ? movie.Release_Date[..4] : "",
-                        imdbID = $"tmdb-{movie.Id}",
-                        Type = "movie",
-                        Poster = string.IsNullOrEmpty(movie.Poster_Path) ? "N/A" : $"https://image.tmdb.org/t/p/w342{movie.Poster_Path}"
-                    });
+                        results.Add(new OmdbSearchItem
+                        {
+                            Title = movie.Title ?? movie.Original_Title ?? "Untitled",
+                            Year = movie.Release_Date?.Length >= 4 ? movie.Release_Date[..4] : "",
+                            imdbID = $"tmdb-{movie.Id}",
+                            Type = "movie",
+                            Poster = string.IsNullOrEmpty(movie.Poster_Path)
+                                ? "N/A"
+                                : $"https://image.tmdb.org/t/p/w342{movie.Poster_Path}"
+                        });
+                    }
                 }
             }
         }
@@ -66,19 +79,22 @@ public class TmdbService
     public async Task<List<Episode>> FetchEpisodesByIdAsync(int tmdbId)
     {
         var episodes = new List<Episode>();
-        if (string.IsNullOrEmpty(_apiKey)) return episodes;
+        if (string.IsNullOrEmpty(_apiKey))
+            return episodes;
 
         try
         {
             var detailsUrl = $"https://api.themoviedb.org/3/tv/{tmdbId}?api_key={_apiKey}";
             var details = await _http.GetFromJsonAsync<TmdbTvDetails>(detailsUrl);
-            if (details == null || details.Number_Of_Seasons <= 0) return episodes;
+            if (details == null || details.Number_Of_Seasons <= 0)
+                return episodes;
 
             for (int season = 1; season <= details.Number_Of_Seasons; season++)
             {
                 var seasonUrl = $"https://api.themoviedb.org/3/tv/{tmdbId}/season/{season}?api_key={_apiKey}";
                 var seasonResult = await _http.GetFromJsonAsync<TmdbSeasonResponse>(seasonUrl);
-                if (seasonResult?.Episodes == null) continue;
+                if (seasonResult?.Episodes == null)
+                    continue;
 
                 foreach (var ep in seasonResult.Episodes)
                 {
@@ -110,7 +126,8 @@ public class TmdbService
             var searchUrl = $"https://api.themoviedb.org/3/search/tv?api_key={_apiKey}&query={Uri.EscapeDataString(title)}";
             var searchResponse = await _http.GetFromJsonAsync<TmdbSearchResponse<TmdbTvSearchResult>>(searchUrl);
             var best = searchResponse?.Results?.FirstOrDefault();
-            if (best == null) return new List<Episode>();
+            if (best == null)
+                return new List<Episode>();
 
             return await FetchEpisodesByIdAsync(best.Id);
         }
@@ -122,7 +139,8 @@ public class TmdbService
 
     public async Task<OmdbDetail?> GetDetailsAsync(int tmdbId, string type)
     {
-        if (string.IsNullOrEmpty(_apiKey)) return null;
+        if (string.IsNullOrEmpty(_apiKey))
+            return null;
 
         try
         {
@@ -141,12 +159,18 @@ public class TmdbService
             var dateStr = root.TryGetProperty(dateField, out var d) ? d.GetString() : null;
             var year = !string.IsNullOrEmpty(dateStr) && dateStr.Length >= 4 ? dateStr[..4] : "";
 
-            var posterPath = root.TryGetProperty("poster_path", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.String
-                ? p.GetString() : null;
-            var poster = string.IsNullOrEmpty(posterPath) ? "N/A" : $"https://image.tmdb.org/t/p/w500{posterPath}";
+            var posterPath = root.TryGetProperty("poster_path", out var p) &&
+                             p.ValueKind == System.Text.Json.JsonValueKind.String
+                ? p.GetString()
+                : null;
+
+            var poster = string.IsNullOrEmpty(posterPath)
+                ? "N/A"
+                : $"https://image.tmdb.org/t/p/w500{posterPath}";
 
             var genre = "";
-            if (root.TryGetProperty("genres", out var genresEl) && genresEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+            if (root.TryGetProperty("genres", out var genresEl) &&
+                genresEl.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
                 genre = string.Join(", ", genresEl.EnumerateArray()
                     .Select(g => g.TryGetProperty("name", out var n) ? n.GetString() : null)
@@ -154,11 +178,16 @@ public class TmdbService
             }
 
             var runtime = "";
-            if (endpoint == "movie" && root.TryGetProperty("runtime", out var rt) && rt.ValueKind == System.Text.Json.JsonValueKind.Number)
+            if (endpoint == "movie" &&
+                root.TryGetProperty("runtime", out var rt) &&
+                rt.ValueKind == System.Text.Json.JsonValueKind.Number)
             {
                 runtime = $"{rt.GetInt32()} min";
             }
-            else if (endpoint == "tv" && root.TryGetProperty("episode_run_time", out var ert) && ert.ValueKind == System.Text.Json.JsonValueKind.Array && ert.GetArrayLength() > 0)
+            else if (endpoint == "tv" &&
+                     root.TryGetProperty("episode_run_time", out var ert) &&
+                     ert.ValueKind == System.Text.Json.JsonValueKind.Array &&
+                     ert.GetArrayLength() > 0)
             {
                 runtime = $"{ert[0].GetInt32()} min";
             }
@@ -169,9 +198,11 @@ public class TmdbService
 
             var director = "";
             var actors = "";
+
             if (root.TryGetProperty("credits", out var credits))
             {
-                if (credits.TryGetProperty("crew", out var crew) && crew.ValueKind == System.Text.Json.JsonValueKind.Array)
+                if (credits.TryGetProperty("crew", out var crew) &&
+                    crew.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
                     director = string.Join(", ", crew.EnumerateArray()
                         .Where(c => c.TryGetProperty("job", out var job) && job.GetString() == "Director")
@@ -179,7 +210,9 @@ public class TmdbService
                         .Where(n => !string.IsNullOrEmpty(n))
                         .Take(3));
                 }
-                if (credits.TryGetProperty("cast", out var cast) && cast.ValueKind == System.Text.Json.JsonValueKind.Array)
+
+                if (credits.TryGetProperty("cast", out var cast) &&
+                    cast.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
                     actors = string.Join(", ", cast.EnumerateArray()
                         .Take(5)
