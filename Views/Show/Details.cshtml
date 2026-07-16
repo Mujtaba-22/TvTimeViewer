@@ -1,35 +1,48 @@
 @model TvTimeViewer.Models.Show
 @{
     ViewData["Title"] = Model.Title;
+
     var seasons = Model.Episodes
         .GroupBy(e => e.SeasonNumber)
         .OrderBy(g => g.Key)
         .ToList();
+
     var today = DateTime.UtcNow.Date;
+    var watchedEpisodes = Model.Episodes.Count(e => e.Watched);
+    var totalEpisodes = Model.Episodes.Count;
+    var progressPercent = totalEpisodes > 0 ? watchedEpisodes * 100 / totalEpisodes : 0;
 }
 
 <div class="row mb-4">
     <div class="col-md-3">
         <img src="@(Model.PosterImage != null ? Url.Action("Show", "Poster", new { id = Model.Id }) : "/images/placeholder.png")"
-             class="img-fluid rounded shadow-sm" alt="@Model.Title" />
+             class="img-fluid rounded shadow-sm"
+             alt="@Model.Title" />
     </div>
+
     <div class="col-md-9">
         <h2>@Model.Title</h2>
+
         <div class="mb-2">
             @if (Model.Archived)
             {
                 <span class="badge bg-secondary">Archived</span>
             }
+
             @if (!string.IsNullOrEmpty(Model.Genre))
             {
                 <span class="badge bg-light text-dark border">@Model.Genre</span>
             }
         </div>
-        <p class="text-muted">
-            @Model.Episodes.Count(e => e.Watched) of @Model.Episodes.Count episodes watched
+
+        <p class="text-muted" id="showProgressText">
+            @watchedEpisodes of @totalEpisodes episodes watched
         </p>
+
         <div class="progress mb-3" style="height:8px;">
-            <div class="progress-bar bg-success" style="width:@(Model.Episodes.Count > 0 ? Model.Episodes.Count(e => e.Watched) * 100 / Model.Episodes.Count : 0)%"></div>
+            <div id="showProgressBar"
+                 class="progress-bar bg-success"
+                 style="width:@progressPercent%"></div>
         </div>
     </div>
 </div>
@@ -37,8 +50,12 @@
 <div class="episodes-panel">
     <div class="episodes-panel-header">
         <span>All episodes</span>
-        <form asp-controller="Show" asp-action="MarkAllWatched" method="post"
-              data-confirm="Mark all RELEASED episodes in this show as watched?" class="d-inline">
+
+        <form asp-controller="Show"
+              asp-action="MarkAllWatched"
+              method="post"
+              data-confirm="Mark all RELEASED episodes in this show as watched?"
+              class="d-inline">
             <input type="hidden" name="showId" value="@Model.Id" />
             <button type="submit"
                     class="check-btn @(Model.Episodes.Any() && Model.Episodes.All(e => e.Watched) ? "check-btn-active" : "")"
@@ -58,23 +75,32 @@
         var allWatched = watchedCount == totalCount;
         var label = season.Key == 0 ? "Specials" : $"Season {season.Key}";
 
-        <div class="season-row">
-            <div class="season-row-main" data-bs-toggle="collapse" data-bs-target="#season@(season.Key)Body">
+        <div class="season-row" data-season-number="@season.Key">
+            <div class="season-row-main"
+                 data-bs-toggle="collapse"
+                 data-bs-target="#season@(season.Key)Body"
+                 aria-expanded="false">
                 <span class="season-title">
                     @label
                     <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M6 9l6 6 6-6" />
                     </svg>
                 </span>
+
                 <div class="season-right">
-                    <span class="season-count">@watchedCount/@totalCount</span>
-                    <form asp-controller="Show" asp-action="MarkSeasonWatched" method="post"
+                    <span class="season-count" id="seasonCount-@season.Key">@watchedCount/@totalCount</span>
+
+                    <form asp-controller="Show"
+                          asp-action="MarkSeasonWatched"
+                          method="post"
                           data-confirm="Mark all RELEASED episodes of @label as watched?"
-                          class="d-inline" onclick="event.stopPropagation()">
+                          class="d-inline"
+                          onclick="event.stopPropagation()">
                         <input type="hidden" name="showId" value="@Model.Id" />
                         <input type="hidden" name="seasonNumber" value="@season.Key" />
                         <button type="submit"
-                                class="check-btn @(allWatched ? "check-btn-active" : "")"
+                                class="check-btn season-check-btn @(allWatched ? "check-btn-active" : "")"
+                                data-season-button="@season.Key"
                                 title="Mark season's released episodes watched">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                 <path d="M5 13l4 4L19 7" />
@@ -91,9 +117,10 @@
                         var isReleased = ep.AirDate.HasValue && ep.AirDate.Value.Date <= today;
                         var daysRemaining = ep.AirDate.HasValue ? (ep.AirDate.Value.Date - today).Days : (int?)null;
 
-                        <li class="episode-row">
+                        <li class="episode-row" data-episode-row data-season="@ep.SeasonNumber">
                             <span class="episode-name">
                                 E@(ep.EpisodeNumber.ToString("00")) — @ep.Name
+
                                 @if (!isReleased)
                                 {
                                     if (ep.AirDate.HasValue && daysRemaining.HasValue && daysRemaining.Value > 0)
@@ -110,16 +137,17 @@
                                     }
                                 }
                             </span>
-                            <form asp-controller="Show" asp-action="ToggleWatched" method="post" class="d-inline">
-                                <input type="hidden" name="episodeId" value="@ep.Id" />
-                                <button type="submit"
-                                        class="check-btn check-btn-sm @(ep.Watched ? "check-btn-active" : "") @(!isReleased ? "check-btn-disabled" : "")"
-                                        @(!isReleased ? "disabled title=\"Not released yet\"" : "")>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                        <path d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </button>
-                            </form>
+
+                            <button type="button"
+                                    class="check-btn check-btn-sm episode-toggle-btn @(ep.Watched ? "check-btn-active" : "") @(!isReleased ? "check-btn-disabled" : "")"
+                                    data-episode-id="@ep.Id"
+                                    data-season-number="@ep.SeasonNumber"
+                                    data-watched="@(ep.Watched.ToString().ToLower())"
+                                    @(!isReleased ? "disabled title=\"Not released yet\"" : "title=\"Toggle watched\"")>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <path d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
                         </li>
                     }
                 </ul>
@@ -236,6 +264,11 @@
         background: #2a2a2a !important;
     }
 
+    .check-btn-loading {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
     .episode-list {
         list-style: none;
         margin: 0;
@@ -284,3 +317,91 @@
         border-color: #555;
     }
 </style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.episode-toggle-btn');
+            if (!btn || btn.disabled) return;
+
+            const episodeId = btn.dataset.episodeId;
+            const seasonNumber = btn.dataset.seasonNumber;
+            const wasWatched = btn.dataset.watched === 'true';
+
+            btn.disabled = true;
+            btn.classList.add('check-btn-loading');
+
+            try {
+                const formData = new FormData();
+                formData.append('episodeId', episodeId);
+
+                const res = await fetch('/Show/ToggleWatched', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                if (!data.success) {
+                    throw new Error(data.message || 'Could not update episode.');
+                }
+
+                const isWatched = !!data.watched;
+                btn.dataset.watched = isWatched ? 'true' : 'false';
+                btn.classList.toggle('check-btn-active', isWatched);
+
+                updateSeasonCount(seasonNumber);
+                updateShowProgress();
+            } catch (err) {
+                console.error('Episode toggle failed:', err);
+                alert('Could not update this episode.');
+                btn.dataset.watched = wasWatched ? 'true' : 'false';
+                btn.classList.toggle('check-btn-active', wasWatched);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('check-btn-loading');
+            }
+        });
+
+        function updateSeasonCount(seasonNumber) {
+            const seasonButtons = document.querySelectorAll(`.episode-toggle-btn[data-season-number="${seasonNumber}"]`);
+            const watchedCount = Array.from(seasonButtons).filter(b => b.dataset.watched === 'true').length;
+            const totalCount = seasonButtons.length;
+
+            const seasonCountEl = document.getElementById(`seasonCount-${seasonNumber}`);
+            if (seasonCountEl) {
+                seasonCountEl.textContent = `${watchedCount}/${totalCount}`;
+            }
+
+            const seasonBtn = document.querySelector(`[data-season-button="${seasonNumber}"]`);
+            if (seasonBtn) {
+                seasonBtn.classList.toggle('check-btn-active', totalCount > 0 && watchedCount === totalCount);
+            }
+        }
+
+        function updateShowProgress() {
+            const allEpisodeButtons = document.querySelectorAll('.episode-toggle-btn');
+            const watchedCount = Array.from(allEpisodeButtons).filter(b => b.dataset.watched === 'true').length;
+            const totalCount = allEpisodeButtons.length;
+            const percent = totalCount > 0 ? Math.round((watchedCount * 100) / totalCount) : 0;
+
+            const progressText = document.getElementById('showProgressText');
+            const progressBar = document.getElementById('showProgressBar');
+
+            if (progressText) {
+                progressText.textContent = `${watchedCount} of ${totalCount} episodes watched`;
+            }
+
+            if (progressBar) {
+                progressBar.style.width = `${percent}%`;
+            }
+        }
+    </script>
+}

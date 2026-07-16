@@ -72,6 +72,17 @@
                         <span class="badge bg-success">✓ Watched</span>
                     }
                 </div>
+                <div class="card-footer p-2 bg-white border-0 d-flex gap-1">
+                    <form asp-controller="Movie" asp-action="ToggleWatched" method="post" class="flex-grow-1">
+                        <input type="hidden" name="movieId" value="@movie.Id" />
+                        <button type="submit" class="btn btn-sm w-100 @(movie.Watched ? "btn-success" : "btn-outline-secondary")">
+                            @(movie.Watched ? "✓ Watched" : "Mark Watched")
+                        </button>
+                    </form>
+                    <form asp-controller="Library" asp-action="DeleteMovie" asp-route-id="@movie.Id" method="post" data-confirm="Remove this movie?">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
+                    </form>
+                </div>
             </div>
         </div>
     }
